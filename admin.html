@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, nosnippet">
+    <title>Asif Ansari (Admin)</title>
+    <!-- Use Google Fonts (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        :root {
+            --sidebar-width: 280px;
+        }
+        body { background: var(--light-bg); display: flex; min-height: 100vh; flex-direction: column; }
+        
+        .admin-layout {
+            display: flex;
+            flex: 1;
+            margin-top: 80px; /* navbar offset */
+        }
+
+        /* Sidebar Styling */
+        .admin-sidebar {
+            width: 280px;
+            background: var(--pure-white);
+            border-right: 1px solid var(--border-color);
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            height: calc(100vh - 80px);
+            position: fixed;
+            left: 0;
+            z-index: 100;
+        }
+
+        .sidebar-item {
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(217, 4, 41, 0.05);
+            color: var(--primary-red);
+        }
+
+        .sidebar-item.active {
+            background: var(--primary-red);
+            color: white;
+            box-shadow: var(--shadow-red);
+        }
+
+        /* Content Area */
+        .admin-main-content {
+            margin-left: 280px;
+            flex: 1;
+            padding: 3rem 5%;
+            background: var(--light-bg);
+        }
+
+        .admin-section {
+            background: var(--pure-white);
+            border-radius: 24px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-sm);
+            display: none; /* Hidden by default, toggled via JS */
+        }
+
+        .admin-section.active {
+            display: block;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .admin-header-compact {
+            margin-bottom: 2.5rem;
+        }
+
+        .admin-header-compact h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--text-dark);
+        }
+
+        /* Re-using existing styles from previous admin model */
+        .admin-list { list-style: none; padding: 0; }
+        .admin-list-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.5rem 0; border-bottom: 1px solid var(--border-color);
+            transition: all 0.4s ease;
+        }
+        .admin-list-item:hover {
+            background: rgba(217, 4, 41, 0.02); padding-left: 1rem; padding-right: 1rem;
+            border-radius: 12px;
+        }
+        .item-delete-anim { animation: shrinkFade 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        .is-unlisted { opacity: 0.6; border-left: 3px solid #8b5cf6; padding-left: 0.75rem; }
+        
+        .stat-card {
+            background: var(--pure-white);
+            padding: 1.5rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        @media (max-width: 992px) {
+            .admin-sidebar { width: 80px; padding: 2rem 0.5rem; }
+            .sidebar-item { justify-content: center; padding: 1rem; }
+            .sidebar-item span { display: none; }
+            .admin-main-content { margin-left: 80px; }
+        }
+    </style>
+</head>
+<body class="anim-body">
+    <!-- Admin Login Screen -->
+    <div id="admin-login-screen" class="admin-login-overlay">
+        <div class="admin-login-card reveal anim-stagger-1 visible" style="opacity:1; transform:translateY(0);">
+            <h2 style="font-weight: 800; font-size: 2rem; margin-bottom: 1rem;">
+                <span style="color:var(--primary-red);">Asif</span> <span>Ansari.</span>
+            </h2>
+            <p>Admin Authentication Required</p>
+            <form id="admin-login-form">
+                <div class="form-group" style="text-align: left;">
+                    <label for="admin-username">Username</label>
+                    <input type="text" id="admin-username" class="form-control" required>
+                </div>
+                <div class="form-group" style="text-align: left;">
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Unlock Dashboard</button>
+                <div id="login-error" class="login-error">Incorrect Credentials</div>
+            </form>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            Asif <span>Ansari.</span> <span style="font-size: 1rem; font-weight: 500; color: #777;">(Admin)</span>
+        </a>
+        <div class="nav-links" style="display: flex; align-items: center;">
+            <a href="index.html" class="nav-item">View Live Site</a>
+            <button class="nav-item btn btn-outline" id="admin-logout-btn" style="padding: 0.4rem 1rem; margin-left: 1.5rem; color: var(--primary-red); border-color: var(--primary-red);">Log Out</button>
+        </div>
+    </nav>
+
+    <div class="admin-layout">
+        <aside class="admin-sidebar" id="admin-sidebar">
+            <div class="sidebar-item active" data-section="section-analytics">
+                <i>📊</i> <span>Website Analysis</span>
+            </div>
+            <div class="sidebar-item" data-section="section-upload">
+                <i>✍️</i> <span>Post Content</span>
+            </div>
+            <div class="sidebar-item" data-section="section-manage">
+                <i>📚</i> <span>Post Management</span>
+            </div>
+            <div class="sidebar-item" data-section="section-theming">
+                <i>🎨</i> <span>Platform Theming</span>
+            </div>
+        </aside>
+
+        <main class="admin-main-content">
+            <!-- ANALYTICS SECTION -->
+            <section id="section-analytics" class="admin-section active">
+                <div class="admin-header-compact">
+                    <h1>Website Analysis</h1>
+                    <p style="color: var(--text-light);">Real-time performance metrics and visit statistics.</p>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
+                    <div class="stat-card">
+                        <div class="stat-title">👁️ Total Article Views</div>
+                        <div class="stat-value" id="stat-total-views">—</div>
+                        <div class="stat-trend trend-up" id="stat-views-trend">Loading...</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🌐 Website Visits</div>
+                        <div class="stat-value" id="stat-visits">—</div>
+                        <div class="stat-trend trend-up">Since site launch</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">📝 Total Published</div>
+                        <div class="stat-value" id="stat-published">—</div>
+                        <div class="stat-trend trend-up" id="stat-archived-count">0 archived</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🔥 Most Viewed Post</div>
+                        <div class="stat-value" style="font-size: 1.2rem; line-height: 1.3;" id="stat-top-post">—</div>
+                        <div class="stat-trend trend-up" id="stat-top-views">0 views</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- UPLOAD SECTION -->
+            <section id="section-upload" class="admin-section">
+                <div class="admin-header-compact">
+                    <h1>Post Content</h1>
+                    <p style="color: var(--text-light);">Create and publish immersive stories to the world.</p>
+                </div>
+                <form id="upload-form">
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text" id="title" class="form-control" placeholder="Enter an inspiring title..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category" class="form-control" required style="cursor: pointer; appearance: none;">
+                            <option value="">Select a domain</option>
+                            <option value="technology">Technology</option>
+                            <option value="vlog">Vlogs & Video</option>
+                            <option value="lifestyle">Lifestyle</option>
+                            <option value="fresh blogs">Fresh Blogs</option>
+                            <option value="travel">Travel</option>
+                            <option value="business">Business</option>
+                            <option value="health">Health & Wellness</option>
+                            <option value="personal">Personal</option>
+                            <option value="photography">Photography</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="post-date">Publish Date & Time (Optional)</label>
+                        <input type="datetime-local" id="post-date" class="form-control" style="cursor: pointer;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Cover Media</label>
+                        <div class="upload-area">
+                            <input type="file" id="cover-image" accept="image/*,video/*">
+                            <div style="font-size: 2rem; color: var(--primary-red); margin-bottom: 1rem;">🎥</div>
+                            <h3 style="margin-bottom: 0.5rem;">Upload Cover or Vlog</h3>
+                            <p id="file-name-display" style="color: var(--text-light);">Drag and drop a high-res file, or click to browse</p>
+                        </div>
+                        <input type="text" id="cover-caption-input" class="form-control" placeholder="Enter Feature Image Caption..." style="margin-top: 10px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="content">Content Body</label>
+                        <div class="editor-toolbar">
+                            <button type="button" class="editor-btn" onclick="formatDoc('bold')"><b>B</b></button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('italic')"><i>I</i></button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('underline')"><u>U</u></button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('createLink', prompt('Paste URL here:'))">🔗 Link</button>
+                            <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+                            <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;">
+                                <span style="font-size: 0.75rem;">Text</span>
+                                <input type="color" onchange="formatDoc('foreColor', this.value)" style="width: 20px; height: 20px; border: none; cursor: pointer; background: transparent;">
+                            </div>
+                            <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;">
+                                <span style="font-size: 0.75rem;">Bg</span>
+                                <input type="color" onchange="formatDoc('hiliteColor', this.value)" style="width: 20px; height: 20px; border: none; cursor: pointer; background: transparent;">
+                            </div>
+                            <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+                            <button type="button" class="editor-btn" onclick="formatDoc('insertUnorderedList')">&bull; List</button>
+                            <button type="button" class="editor-btn" id="btn-insert-image" title="Insert Image into Story" style="color: var(--primary-red); font-weight: 800;">🖼️ Add Image</button>
+                            <input type="file" id="body-image-upload" accept="image/*" style="display: none;">
+                            <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+                            <button type="button" class="editor-btn image-resize-btn" onclick="resizeActiveImage('100%')" title="Full Width">100%</button>
+                            <button type="button" class="editor-btn image-resize-btn" onclick="resizeActiveImage('50%')" title="Half Width">50%</button>
+                            <button type="button" class="editor-btn" onclick="addCaptionToImage()" title="Add Caption" style="color: var(--primary-red); font-weight: 700;">💬 Caption</button>
+                        </div>
+                        <div id="content" class="rich-editor" contenteditable="true" placeholder="Start drafting your masterpiece..."></div>
+                    </div>
+
+                    <div style="text-align: right; margin-top: 2rem;">
+                        <button type="submit" class="btn btn-primary">Publish to Live Site</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- MANAGEMENT SECTION -->
+            <section id="section-manage" class="admin-section">
+                <div class="admin-header-compact">
+                    <h1>Post Management</h1>
+                    <p style="color: var(--text-light);">Review, edit, or archive your historical content.</p>
+                </div>
+                <ul class="admin-list" id="content-list">
+                    <!-- Javascript dynamically renders list of articles here -->
+                </ul>
+            </section>
+
+            <!-- THEMING SECTION -->
+            <section id="section-theming" class="admin-section">
+                <div class="admin-header-compact">
+                    <h1>Platform Theming</h1>
+                    <p style="color: var(--text-light);">Instantly customize the platform's visual identity.</p>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem;">
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="crimson" style="background: #D90429; width: 50px; height: 50px; border-radius: 50%;" title="Crimson"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px;">Crimson</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="orange" style="background: #f97316; width: 50px; height: 50px; border-radius: 50%;" title="Orange"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px;">Orange</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="purple" style="background: #8b5cf6; width: 50px; height: 50px; border-radius: 50%;" title="Purple"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px;">Purple</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="green" style="background: #10b981; width: 50px; height: 50px; border-radius: 50%;" title="Green"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px;">Green</p>
+                    </div>
+                    
+                    <!-- Event Themes -->
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="christmas" style="background: #c41e3a; width: 50px; height: 50px; border-radius: 50%; border: 4px solid #165b33;" title="Christmas"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px;">Christmas</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="newyear" style="background: #d4af37; width: 50px; height: 50px; border-radius: 50%; border: 4px solid #1a1a1a;" title="New Year"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px;">New Year</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="holi" style="background: #ec4899; width: 50px; height: 50px; border-radius: 50%; border: 4px solid #facc15;" title="Holi"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px;">Holi</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="onam" style="background: #fbbf24; width: 50px; height: 50px; border-radius: 50%; border: 4px solid #1e3a8a;" title="Onam"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px;">Onam</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="button" class="theme-btn" data-theme="neon3d" style="background: linear-gradient(135deg, #00f2ff, #7000ff); width: 50px; height: 50px; border-radius: 50%; box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);" title="3D Dynamic"></button>
+                        <p style="font-size: 0.75rem; margin-top: 5px; font-weight: 800; color: #00878f;">3D Dynamic</p>
+                    </div>
+                </div>
+                <div style="background: var(--light-bg); padding: 1.5rem; border-radius: 15px; border-left: 4px solid var(--primary-red);">
+                    <p style="color: var(--text-dark); font-weight: 600;">Pro Tip:</p>
+                    <p style="color: var(--text-light); font-size: 0.95rem;">Select a color to instantly change all accents, buttons, and interaction colors across the entire public platform.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- EDIT MODAL POPUP -->
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal-content reveal anim-float">
+            <div class="modal-header">
+                <h2>Edit Content</h2>
+                <button type="button" class="modal-close" id="close-modal">&times;</button>
+            </div>
+            <form id="edit-form">
+                <input type="hidden" id="modal-edit-id" value="">
+                
+                <div class="form-group">
+                    <label for="modal-title">Title</label>
+                    <input type="text" id="modal-title" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="modal-category">Category</label>
+                    <select id="modal-category" class="form-control" required style="cursor: pointer; appearance: none;">
+                        <option value="technology">Technology</option>
+                        <option value="vlog">Vlogs & Video</option>
+                        <option value="lifestyle">Lifestyle</option>
+                        <option value="fresh blogs">Fresh Blogs</option>
+                        <option value="travel">Travel</option>
+                        <option value="business">Business</option>
+                        <option value="health">Health & Wellness</option>
+                        <option value="personal">Personal</option>
+                        <option value="photography">Photography</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="modal-post-date">Publish Date & Time</label>
+                    <input type="datetime-local" id="modal-post-date" class="form-control" required style="cursor: pointer;">
+                </div>
+
+                <div class="form-group">
+                    <label>Cover Media (Optional)</label>
+                    <div class="upload-area" style="padding: 1.5rem;">
+                        <input type="file" id="modal-cover-image" accept="image/*,video/*">
+                        <p id="modal-file-name-display" style="color: var(--text-light); margin: 0;">Upload a new media to replace the old cover</p>
+                    </div>
+                    <input type="text" id="modal-cover-caption-input" class="form-control" placeholder="Update Feature Image Caption..." style="margin-top: 10px;">
+                </div>
+
+                <div class="form-group">
+                    <label for="modal-content-body">Content Body</label>
+                    <div class="editor-toolbar">
+                        <button type="button" class="editor-btn" onclick="formatDoc('bold')"><b>B</b></button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('italic')"><i>I</i></button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('underline')"><u>U</u></button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('createLink', prompt('Paste URL here:'))">🔗 Link</button>
+                        <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+                        <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;">
+                            <span style="font-size: 0.75rem;">Text</span>
+                            <input type="color" onchange="formatDoc('foreColor', this.value)" style="width: 20px; height: 20px; border: none; cursor: pointer; background: transparent;">
+                        </div>
+                        <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;">
+                            <span style="font-size: 0.75rem;">Bg</span>
+                            <input type="color" onchange="formatDoc('hiliteColor', this.value)" style="width: 20px; height: 20px; border: none; cursor: pointer; background: transparent;">
+                        </div>
+                        <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+                        <button type="button" class="editor-btn" onclick="formatDoc('insertUnorderedList')">&bull; List</button>
+                        <button type="button" class="editor-btn" id="modal-btn-insert-image" title="Insert Image into Story" style="color: var(--primary-red); font-weight: 800;">🖼️ Add Image</button>
+                        <input type="file" id="modal-body-image-upload" accept="image/*" style="display: none;">
+                        <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+                        <button type="button" class="editor-btn image-resize-btn" onclick="resizeActiveImage('100%')" title="Full Width">100%</button>
+                        <button type="button" class="editor-btn image-resize-btn" onclick="resizeActiveImage('50%')" title="Half Width">50%</button>
+                        <button type="button" class="editor-btn" onclick="addCaptionToImage()" title="Add Caption" style="color: var(--primary-red); font-weight: 700;">💬 Caption</button>
+                    </div>
+                    <div id="modal-content-body" class="rich-editor" contenteditable="true" style="min-height: 200px;"></div>
+                </div>
+
+                <div style="text-align: right; margin-top: 2rem;">
+                    <button type="button" class="btn btn-outline" id="cancel-modal" style="margin-right: 1rem;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem;">
+            <span style="color: var(--primary-red);">UPDOWN</span> <span>INTERACTIVE.</span>
+        </h2>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+    <script>
+        // Sidebar Navigation Logic
+        const sidebarItems = document.querySelectorAll('.sidebar-item');
+        const adminSections = document.querySelectorAll('.admin-section');
+
+        sidebarItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const targetId = item.getAttribute('data-section');
+                
+                // Update active sidebar item
+                sidebarItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+
+                // Update visible section
+                adminSections.forEach(section => {
+                    section.classList.remove('active');
+                    if (section.id === targetId) {
+                        section.classList.add('active');
+                    }
+                });
+
+                // On mobile, you might want to auto-scroll or close menu
+                if (window.innerWidth <= 992) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
+        });
+        // Global helper: switch to any section by ID (used by script.js after publish)
+        window.switchToSection = function(targetId) {
+            sidebarItems.forEach(i => i.classList.remove('active'));
+            adminSections.forEach(section => {
+                section.classList.remove('active');
+                if (section.id === targetId) section.classList.add('active');
+            });
+            // Highlight matching sidebar item
+            sidebarItems.forEach(item => {
+                if (item.getAttribute('data-section') === targetId) item.classList.add('active');
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asif Ansari</title>
+    <!-- Use Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        body { background: var(--pure-white); }
+        .editor-container { background: #fff; padding-top: 2rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            Asif <span>Ansari.</span>
+        </a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-item">Home</a>
+            <a href="article.html" class="nav-item">Latest Article</a>
+        </div>
+    </nav>
+
+    <main>
+        <div class="form-container reveal">
+            <div class="section-title">
+                <h2>Admin Console</h2>
+            </div>
+            <p style="margin-bottom: 2rem; color: var(--text-light);">Create a new high-impact article for the platform. Fill in the details below.</p>
+            
+            <form id="upload-form">
+                <div class="form-group">
+                    <label for="title">Headline</label>
+                    <input type="text" id="title" class="form-control" placeholder="The Evolution of UX Design..." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="post-date">Publication Date (Manual Override)</label>
+                    <input type="text" id="post-date" class="form-control" placeholder="e.g., Jun 12, 2026 (Leave empty for today)">
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Platform Domain</label>
+                    <select id="category" class="form-control" required>
+                        <option value="" disabled selected>Select a domain</option>
+                        <option value="vlog">Vlog & Visuals</option>
+                        <option value="technology">Technology & Future</option>
+                        <option value="lifestyle">Modern Lifestyle</option>
+                        <option value="business">Creative Business</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Cover Media</label>
+                    <div class="upload-area">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: var(--primary-red); margin-bottom: 1rem;"></i>
+                        <p id="file-name-display">Drag and drop a high-res file, or click to browse</p>
+                        <input type="file" id="cover-image" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="cover-caption-input">Cover Media Caption</label>
+                    <input type="text" id="cover-caption-input" class="form-control" placeholder="Enter a descriptive caption for the cover image...">
+                </div>
+
+                <!-- Rich Content Editor -->
+                <div class="form-group">
+                    <label>Article Body (Rich Editing Enabled)</label>
+                    <div class="editor-toolbar">
+                        <button type="button" class="editor-btn" onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('insertUnorderedList')" title="List">•</button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('justifyLeft')">⇐</button>
+                        <button type="button" class="editor-btn" id="btn-insert-image">🖼️ Add Image</button>
+                        <button type="button" class="editor-btn" onclick="addCaptionToImage()">📝 Add Caption</button>
+                        <button type="button" class="editor-btn" onclick="resizeActiveImage('100%')">Full Width</button>
+                        <button type="button" class="editor-btn" onclick="resizeActiveImage('50%')">Half Width</button>
+                        <input type="file" id="body-image-upload" style="display:none;" accept="image/*">
+                    </div>
+                    <div id="content" class="form-control rich-editor" contenteditable="true" style="min-height: 400px; height: auto; overflow-y: auto;">
+                        <p>Write your story here...</p>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1.25rem;">
+                    🚀 Publish Live
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem;">
+            <span style="color: var(--primary-red);">Asif</span>
+            <span style="color: var(--pure-white);">Ansari.</span>
+        </h2>
+        <p>&copy; 2026 Asif Ansari. All rights reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
+</html>
