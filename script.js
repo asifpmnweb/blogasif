@@ -1100,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 10. Article Viewing Page Display logic
     if (window.location.pathname.includes('article') || window.location.search.includes('id=')) {
         const urlParams = new URLSearchParams(window.location.search);
-        let articleId = urlParams.get('id') || (window.location.pathname.includes('/article/') ? window.location.pathname.split('/article/')[1].replace(/\/$/, '') : null);
+        let articleId = urlParams.get('id') || (window.location.pathname.includes('/article/') ? decodeURIComponent(window.location.pathname.split('/article/')[1].replace(/\/$/, '')) : null);
         const articles = window.globalArticles;
         const activeArticles = articles.filter(a => !a.archived && !a.unlisted);
 
