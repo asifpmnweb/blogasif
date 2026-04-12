@@ -8,9 +8,9 @@
     <!-- Use Google Fonts (Inter) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="icon" type="image/png" href="./logo.png">
     <style>
         :root {
             --sidebar-width: 280px;
@@ -153,11 +153,12 @@
     </div>
 
     <nav class="navbar">
-        <a href="index.html" class="logo">
+        <a href="/" class="logo">
             Asif <span>Ansari.</span> <span style="font-size: 1rem; font-weight: 500; color: #777;">(Admin)</span>
         </a>
         <div class="nav-links" style="display: flex; align-items: center;">
-            <a href="index.html" class="nav-item">View Live Site</a>
+            <a href="https://asifpmn.in" class="nav-item">Main Website</a>
+            <a href="/" class="nav-item">View Live Site</a>
             <button class="nav-item btn btn-outline" id="admin-logout-btn" style="padding: 0.4rem 1rem; margin-left: 1.5rem; color: var(--primary-red); border-color: var(--primary-red);">Log Out</button>
         </div>
     </nav>
@@ -439,7 +440,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="script.js"></script>
+    <script src="./script.js"></script>
     <script>
         // Sidebar Navigation Logic
         const sidebarItems = document.querySelectorAll('.sidebar-item');

@@ -19,9 +19,14 @@
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
     <!-- Preload Critical Resources -->
-    <link rel="preload" href="styles.css" as="style">
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap"></noscript>
+    <link rel="preload" href="./styles.css" as="style">
+    <link rel="preload"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap"
+        as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+        <link rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap">
+    </noscript>
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
@@ -65,8 +70,8 @@
     }
     </script>
 
-    <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="icon" type="image/png" href="./logo.png">
 </head>
 
 <body class="anim-body">
@@ -83,7 +88,7 @@
         <div class="progress-bar" id="reading-progress"></div>
     </div>
     <nav class="navbar">
-        <a href="index.html" class="logo">
+        <a href="/" class="logo">
             Asif <span>Ansari.</span>
         </a>
 
@@ -92,8 +97,9 @@
         </button>
 
         <div class="nav-links" id="nav-links">
-            <a href="index.html" class="nav-item active">Home</a>
-            <a href="article.html" class="nav-item">Latest Article</a>
+            <a href="/" class="nav-item active">Home</a>
+            <a href="/article" class="nav-item">Latest Article</a>
+            <a href="https://asifpmn.in" class="nav-item">Main Website</a>
         </div>
     </nav>
 
@@ -153,12 +159,10 @@
         <p>&copy; 2026 Blog By Asif Ansari. All rights reserved.</p>
     </footer>
 
-    <!-- Dark Mode Toggle -->
-    <button class="theme-toggle-btn" id="dark-mode-toggle" title="Toggle Dark Mode">🌙</button>
 
-    <!-- Supabase & Main Script: defer so they never block render -->
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="script.js" defer></script>
+    <script src="./script.js" defer></script>
 </body>
 
 </html>
