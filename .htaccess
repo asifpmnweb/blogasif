@@ -2,6 +2,7 @@
 # UPDOWN INTERACTIVE - Optimized Server Configuration (.htaccess)
 # ----------------------------------------------------------------------
 
+Options -MultiViews
 RewriteEngine On
 
 # 1. SEO Friendly Article URLs (.htaccess routing)

@@ -15,19 +15,19 @@ window.globalArticles = [];
 const STORAGE_KEY = 'crimson_articles';
 
 // 0. Smart Environment Routing Logic (Fixes file:// and Server paths)
-const isLocalFile = window.location.protocol === 'file:';
-const pageExt = isLocalFile ? '.html' : '';
+const isLocalEnv = window.location.protocol === 'file:';
+const pageExt = isLocalEnv ? '.html' : '';
 
 // Helper to sanitize links for the current environment
 const getSafeLink = (path) => {
-    if (path === '/' || path === './' || path === '') return isLocalFile ? 'index.html' : '/';
+    if (path === '/' || path === './' || path === '') return isLocalEnv ? 'index.html' : '/';
     // Remove leading slash for local file consistency if needed
     const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    return isLocalFile ? `./${cleanPath}${pageExt}` : `/${cleanPath}`;
+    return isLocalEnv ? `./${cleanPath}${pageExt}` : `/${cleanPath}`;
 };
 
 const getArticleLink = (identifier) => {
-    return isLocalFile ? `${getSafeLink('article')}?id=${identifier}` : `/article/${identifier}`;
+    return isLocalEnv ? `${getSafeLink('article')}?id=${identifier}` : `/article/${identifier}`;
 };
 
 // Dynamic Theme Engine
@@ -282,6 +282,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (error) { DB_ERROR = true; console.error("Supabase Error:", error); }
             window.globalArticles = data || [];
             
+            // Legacy Migration: Recover old local posts into Supabase
+            try {
+                const legacyStr = localStorage.getItem('crimson_articles');
+                if (legacyStr) {
+                    const legacyArts = JSON.parse(legacyStr);
+                    if (Array.isArray(legacyArts) && legacyArts.length > 0) {
+                        const toAdd = legacyArts.filter(la => !window.globalArticles.find(ga => ga.id === la.id));
+                        if (toAdd.length > 0) {
+                            window.globalArticles = [...window.globalArticles, ...toAdd];
+                            if (sbClient) {
+                                sbClient.from('articles').insert(toAdd).then(() => {
+                                    console.log('Legacy articles seamlessly migrated to Supabase database.');
+                                });
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Legacy migration parsing error', e);
+            }
             if (data && !isDashboard) {
                 localStorage.setItem(CACHE_KEY, JSON.stringify(data));
             }
@@ -628,7 +648,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     showSkeletons(vlogsContainer);
     showSkeletons(allArticlesContainer, 6);
 
-    const activeArticles = (window.globalArticles || []).filter(a => !a.archived && !a.unlisted).reverse();
+    const activeArticles = (window.globalArticles || []).filter(a => !a.archived && !a.unlisted).sort((a, b) => {
+        const dA = new Date(a.date);
+        const dB = new Date(b.date);
+        if (!isNaN(dA) && !isNaN(dB)) return dB - dA;
+        return 0;
+    });
 
     if (gridContainer) gridContainer.innerHTML = '';
     if (listContainer) listContainer.innerHTML = '';
@@ -712,7 +737,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const adminList = document.getElementById('content-list');
         if (!adminList) return;
         adminList.innerHTML = '';
-        const allPosts = (articles || []).slice().reverse();
+        const allPosts = (articles || []).slice().sort((a, b) => {
+            const dA = new Date(a.date);
+            const dB = new Date(b.date);
+            if (!isNaN(dA) && !isNaN(dB)) return dB - dA;
+            return 0;
+        });
         allPosts.forEach(article => {
             const isArchived = article.archived === true;
             const isUnlisted = article.unlisted === true;
@@ -858,7 +888,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const slug = generateSlug(title) || generateShortId();
                 const coverCaption = document.getElementById('cover-caption-input').value.trim();
                 const newArticle = { id: slug, title: title, category: category, content: contentBody, date: postDate, image: imgSrc, cover_caption: coverCaption, archived: false };
-                const { error } = sbClient ? await sbClient.from('articles').insert([newArticle]) : { error: { message: "Offline" } };
+                
+                const { data: insertedData, error } = sbClient ? await sbClient.from('articles').insert([newArticle]).select() : { error: { message: "Offline" } };
+                
                 if (error) {
                     alert("Supabase error: " + error.message);
                     btn.innerHTML = originalText;
@@ -866,18 +898,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     btn.style.pointerEvents = 'auto';
                     return;
                 }
+                
                 btn.innerHTML = `✅ Published!`;
                 btn.style.background = '#10B981';
+                
+                // Immediately push to local state to prevent replication delay from hiding it
+                const finalArticle = (insertedData && insertedData.length > 0) ? insertedData[0] : newArticle;
+                window.globalArticles.push(finalArticle);
+                localStorage.setItem('crimson_db_cache_v2', JSON.stringify(window.globalArticles));
+                window.renderAdminList(window.globalArticles);
+
                 setTimeout(async () => {
-                    if (sbClient) {
-                        try {
-                            const { data: freshData } = await sbClient.from('articles').select('*');
-                            if (freshData) {
-                                window.globalArticles = freshData;
-                                window.renderAdminList(freshData);
-                            }
-                        } catch (e) { }
-                    }
                     if (typeof window.switchToSection === 'function') { window.switchToSection('section-manage'); }
                     btn.innerHTML = 'Publish to Live Site';
                     btn.style.background = '';
@@ -1087,6 +1118,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (foundArticle) {
                 document.title = foundArticle.title + " - Asif Ansari";
+                
+                // --- UPDATE BROWSER URL TO SEO URL ---
+                if (!isLocalEnv) {
+                    const seoPath = '/article/' + (generateSlug(foundArticle.title) || foundArticle.id);
+                    if (window.location.pathname !== seoPath) {
+                        window.history.replaceState(null, '', seoPath);
+                    }
+                }
                 
                 // --- DYNAMIC SEO META FIX ---
                 const rawText = stripHtml(foundArticle.content ||"");
