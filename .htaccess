@@ -4,11 +4,20 @@
 
 RewriteEngine On
 
-# 1. Clean URLs: /article serves article.html invisibly
+# 1. SEO Friendly Article URLs (.htaccess routing)
+RewriteEngine On
+RewriteBase /
+RewriteRule ^article/(styles\.css|script\.js|logo\.png|media/.*)$ /$1 [L]
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^([^\.]+)$ $1.html [NC,L]
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^article/([a-zA-Z0-9_-]+)/?$ /article.html [L,QSA]
 
-# 2. Force clean URL redirect: /article.html → /article
+# 2. General Clean URLs: /admin serves admin.html invisibly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([^\.]+)$ $1.html [NC,L,QSA]
+
+# 3. Force clean URL redirect: /article.html → /article
 RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /([^.]+)\.html\ HTTP
 RewriteRule ^([^.]+)\.html$ https://%{HTTP_HOST}/$1 [R=301,L]
 

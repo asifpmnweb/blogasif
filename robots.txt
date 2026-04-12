@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /admin.html
-Disallow: /upload.html
+Disallow: /admin
+Disallow: /upload
 Sitemap: https://blog.asifpmn.in/sitemap.xml

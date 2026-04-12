@@ -8,11 +8,12 @@
     <meta name="author" content="Asif Ansari">
     <meta name="robots" content="index, follow">
 
-    <link rel="canonical" href="https://blog.asifpmn.in/article.html">
+    <!-- Canonical URL injected dynamically by JS -->
+    <link rel="canonical" href="">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article">
-    <meta property="og:url" content="https://blog.asifpmn.in/article.html">
+    <meta property="og:url" content="">
     <meta property="og:title" id="og-title" content="Asif Ansari | Premium Insights">
     <meta property="og:description" id="og-desc" content="Read immersive, dynamic articles on the Asif Ansari premium digital platform.">
     <meta property="og:image" id="og-img" content="https://blog.asifpmn.in/media/article-fallback.jpg">
@@ -27,9 +28,9 @@
     <!-- Use Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/png" href="logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="icon" type="image/png" href="./logo.png">
     <style>
         .article-meta-large {
             display: flex; justify-content: center; gap: 2rem; 
@@ -50,7 +51,7 @@
     <div class="custom-cursor" id="custom-cursor"></div>
     <div class="progress-container"><div class="progress-bar" id="reading-progress"></div></div>
     <nav class="navbar">
-        <a href="index.html" class="logo">
+        <a href="/" class="logo">
             Asif <span>Ansari.</span>
         </a>
         
@@ -59,8 +60,9 @@
         </button>
 
         <div class="nav-links" id="nav-links">
-            <a href="index.html" class="nav-item">Home</a>
-            <a href="article.html" class="nav-item active">Latest Article</a>
+            <a href="/" class="nav-item">Home</a>
+            <a href="/article" class="nav-item active">Latest Article</a>
+            <a href="https://asifpmn.in" class="nav-item">Main Website</a>
         </div>
     </nav>
 
@@ -115,10 +117,9 @@
         <p>&copy; 2026 Asif Ansari. All rights reserved.</p>
     </footer>
 
-    <!-- Dark Mode Toggle -->
-    <button class="theme-toggle-btn" id="dark-mode-toggle" title="Toggle Dark Mode">🌙</button>
+
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="script.js"></script>
+    <script src="./script.js"></script>
 </body>
 </html>
