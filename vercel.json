@@ -1,5 +1,18 @@
 {
+    "cleanUrls": true,
     "rewrites": [
+        {
+            "source": "/article/styles.css",
+            "destination": "/styles.css"
+        },
+        {
+            "source": "/article/script.js",
+            "destination": "/script.js"
+        },
+        {
+            "source": "/article/logo.png",
+            "destination": "/logo.png"
+        },
         {
             "source": "/article/:slug",
             "destination": "/article.html"
