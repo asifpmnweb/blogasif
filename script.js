@@ -15,7 +15,7 @@ window.globalArticles = [];
 const STORAGE_KEY = 'crimson_articles';
 
 // 0. Smart Environment Routing Logic (Fixes file:// and Server paths)
-const isLocalEnv = window.location.protocol === 'file:';
+const isLocalEnv = window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const pageExt = isLocalEnv ? '.html' : '';
 
 // Helper to sanitize links for the current environment
