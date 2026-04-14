@@ -15,7 +15,7 @@
         },
         {
             "source": "/article/:slug",
-            "destination": "/article.html"
+            "destination": "/article"
         }
     ]
 }
