@@ -1,12 +1,5 @@
 {
     "cleanUrls": true,
-    "redirects": [
-        {
-            "source": "/upload",
-            "destination": "/admin/upload",
-            "permanent": true
-        }
-    ],
     "rewrites": [
         {
             "source": "/article/styles.css",
@@ -23,10 +16,6 @@
         {
             "source": "/article/:slug",
             "destination": "/article"
-        },
-        {
-            "source": "/admin/upload",
-            "destination": "/upload"
         }
     ]
 }
