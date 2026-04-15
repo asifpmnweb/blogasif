@@ -198,6 +198,7 @@ const compressMedia = (file, callback) => {
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
+
             // Compress generic pngs into lossy 60% jpegs to save megabytes
             callback(canvas.toDataURL('image/jpeg', 0.6));
         };
@@ -548,7 +549,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             s.classList.add('enter-from-right');
                         }
                     });
-                }, 800);
+                }, 900);
             };
 
             const startInterval = () => {
@@ -1156,7 +1157,98 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const bodyEl = document.querySelector('.article-body');
                 if (bodyEl) bodyEl.innerHTML = foundArticle.content;
                 const imgEl = document.querySelector('.article-hero-img');
-                if (imgEl && foundArticle.image) imgEl.src = foundArticle.image;
+                if (imgEl && foundArticle.image) {
+                    imgEl.crossOrigin = "anonymous"; // Request CORS to allow canvas export
+                    imgEl.src = foundArticle.image;
+                }
+
+                // Apply dynamic frontend watermark to all article images to protect them
+                setTimeout(() => {
+                    const addVisualWatermarkToImg = (img) => {
+                        if (!img || img.dataset.watermarked || img.parentElement.classList.contains('watermark-wrapper')) return;
+                        
+                        const processImg = () => {
+                            if (img.width < 150) return; // ignore small icons
+                            try {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                
+                                const watermarkText = 'Asif Ansari';
+                                const fontSize = Math.floor(Math.max(16, canvas.width * 0.04));
+                                ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+                                ctx.fillStyle = 'rgba(255, 255, 255, 0.25)'; // delicate transparency
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+                                ctx.shadowBlur = 4;
+                                
+                                ctx.translate(canvas.width / 2, canvas.height / 2);
+                                ctx.rotate(-Math.PI / 6); // -30 degrees
+                                
+                                const xSpacing = ctx.measureText(watermarkText).width + fontSize * 4;
+                                const ySpacing = fontSize * 4;
+                                const limit = Math.max(canvas.width, canvas.height) * 1.5;
+                                
+                                for (let y = -limit; y <= limit; y += ySpacing) {
+                                    const rowIndex = Math.round(y / ySpacing);
+                                    const offsetX = (Math.abs(rowIndex) % 2 === 1) ? xSpacing / 2 : 0;
+                                    for (let x = -limit; x <= limit; x += xSpacing) {
+                                        ctx.fillText(watermarkText, x + offsetX, y);
+                                    }
+                                }
+                                
+                                canvas.toBlob((blob) => {
+                                    const watermarkedUrl = URL.createObjectURL(blob);
+                                    
+                                    // Create wrapper to hold both images
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'watermark-wrapper';
+                                    wrapper.style.position = 'relative';
+                                    wrapper.style.display = 'inline-block';
+                                    wrapper.style.width = '100%';
+                                    img.parentNode.insertBefore(wrapper, img);
+
+                                    // Create hidden downloadable image with watermark
+                                    const downloadableImg = new Image();
+                                    downloadableImg.src = watermarkedUrl;
+                                    downloadableImg.style.width = '100%';
+                                    downloadableImg.style.height = '100%';
+                                    downloadableImg.style.objectFit = 'cover';
+                                    downloadableImg.style.display = 'block';
+
+                                    // Make the original visible image transparent to clicks so right-click goes through it
+                                    img.style.position = 'absolute';
+                                    img.style.top = '0';
+                                    img.style.left = '0';
+                                    img.style.width = '100%';
+                                    img.style.height = '100%';
+                                    img.style.pointerEvents = 'none';
+                                    img.style.zIndex = '5';
+
+                                    wrapper.appendChild(downloadableImg);
+                                    wrapper.appendChild(img);
+                                    img.dataset.watermarked = 'true';
+                                }, 'image/webp', 0.85);
+                            } catch(e) {
+                                // CORS Blocked - fallback to disable download natively
+                                img.dataset.watermarked = 'true';
+                                img.addEventListener('contextmenu', e => e.preventDefault());
+                            }
+                        };
+                        
+                        // Set crossOrigin flag if not already set, so canvas export has a chance to work
+                        if (!img.crossOrigin) { img.crossOrigin = "anonymous"; }
+                        
+                        if (img.complete) processImg();
+                        else img.addEventListener('load', processImg, {once: true});
+                    };
+
+                    if (imgEl) addVisualWatermarkToImg(imgEl);
+                    if (bodyEl) bodyEl.querySelectorAll('img').forEach(addVisualWatermarkToImg);
+                }, 300);
 
                 // Update category and meta if elements exist
                 const catEl = document.querySelector('.article-header .hero-label');
