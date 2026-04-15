@@ -196,7 +196,11 @@ body {
 }
 
 img {
-  /* Image protection removed */
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
 }
 
 .rich-editor img {
@@ -470,39 +474,35 @@ main {
   width: 100%; height: 100%;
   opacity: 0;
   visibility: hidden;
-  transition: transform 0.65s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.65s ease, visibility 0.65s;
+  transition: opacity 0.9s ease, visibility 0.9s;
   z-index: 1;
-  transform: translateX(0);
-  will-change: transform, opacity;
+  will-change: opacity;
 }
 
 /* Entry position classes — set BEFORE transition, so no animation on reposition */
 .hero-slide.enter-from-right {
-  transform: translateX(100%);
+  opacity: 0;
 }
 .hero-slide.enter-from-left {
-  transform: translateX(-100%);
+  opacity: 0;
 }
 
 .hero-slide.active {
   opacity: 1;
   visibility: visible;
   z-index: 2;
-  transform: translateX(0);
 }
 
 .hero-slide.prev-to-left {
   opacity: 0;
   visibility: visible;
-  z-index: 2;
-  transform: translateX(-100%);
+  z-index: 1;
 }
 
 .hero-slide.prev-to-right {
   opacity: 0;
   visibility: visible;
-  z-index: 2;
-  transform: translateX(100%);
+  z-index: 1;
 }
 
 .hero-image-wrapper {
@@ -542,9 +542,6 @@ main {
   max-width: 600px;
   z-index: 5;
   text-align: left;
-  transform: translateY(30px);
-  opacity: 0;
-  transition: all 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
   padding: 0;
   background: transparent;
   backdrop-filter: none;
@@ -552,11 +549,23 @@ main {
   box-shadow: none;
 }
 
-.hero-slide.active .hero-content {
-  transform: translateY(0);
-  opacity: 1;
-  transition-delay: 0.3s;
+/* Premium Staggered Text Animation */
+.hero-content > * {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.9s cubic-bezier(0.165, 0.84, 0.44, 1), transform 0.9s cubic-bezier(0.165, 0.84, 0.44, 1);
+  will-change: opacity, transform;
 }
+
+.hero-slide.active .hero-content > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hero-slide.active .hero-content .hero-label { transition-delay: 0.2s; }
+.hero-slide.active .hero-content .hero-title { transition-delay: 0.35s; }
+.hero-slide.active .hero-content p { transition-delay: 0.5s; }
+.hero-slide.active .hero-content .btn { transition-delay: 0.65s; }
 
 .hero-label {
   display: inline-block;
@@ -690,6 +699,24 @@ main {
   font-size: 2.5rem;
   font-weight: 800;
   letter-spacing: -1px;
+  background: linear-gradient(
+    90deg,
+    var(--text-dark) 0%,
+    var(--text-dark) 40%,
+    var(--primary-red) 50%,
+    var(--text-dark) 60%,
+    var(--text-dark) 100%
+  );
+  background-size: 300% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: textShine 5s linear infinite;
+}
+
+@keyframes textShine {
+  0% { background-position: 300% center; }
+  100% { background-position: 0% center; }
 }
 
 .grid-container {
