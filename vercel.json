@@ -1,5 +1,12 @@
 {
     "cleanUrls": true,
+    "redirects": [
+        {
+            "source": "/upload",
+            "destination": "/admin",
+            "permanent": false
+        }
+    ],
     "rewrites": [
         {
             "source": "/article/styles.css",
