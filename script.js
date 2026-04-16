@@ -1,3 +1,19 @@
+// Consolidated preloader logic to ensure it always hides properly
+window.finalizePreloader = () => {
+    const preloader = document.getElementById('preloader');
+    const texts = document.querySelectorAll('.loading-text-filling, .loading-subtext-filling');
+    texts.forEach(t => t.classList.add('glitch-stop'));
+    document.body.classList.add('loaded');
+    setTimeout(() => {
+        if (preloader) preloader.style.display = 'none';
+        document.querySelectorAll('.reveal').forEach(el => {
+            const rect = el.getBoundingClientRect();
+            if (rect.top < window.innerHeight) el.classList.add('visible');
+        });
+    }, 1200);
+};
+const finalizePreloader = window.finalizePreloader;
+
 let sbClient = null;
 try {
     const supabaseUrl = 'https://maestlpaeoyamtvaxvur.supabase.co';
@@ -56,35 +72,6 @@ applyTheme();
 
 // Content protection disabled per user request
 
-// Consolidated preloader logic to ensure it always hides properly
-window.finalizePreloader = () => {
-    const preloader = document.getElementById('preloader');
-    
-    // Stop any glitch animations immediately
-    const texts = document.querySelectorAll('.loading-text-filling, .loading-subtext-filling');
-    texts.forEach(t => t.classList.add('glitch-stop'));
-
-    // Apply the "loaded" class to trigger shutter animations
-    document.body.classList.add('loaded');
-
-    // After shutters open, hide the preloader div entirely
-    setTimeout(() => {
-        if (preloader) {
-            preloader.style.display = 'none';
-        }
-
-        // Reveal any elements that should animate in immediately
-        document.querySelectorAll('.reveal').forEach(el => {
-            const rect = el.getBoundingClientRect();
-            if (rect.top < window.innerHeight) {
-                el.classList.add('visible');
-            }
-        });
-    }, 1200);
-};
-
-// Ensure the function is available under both common names to prevent errors
-const finalizePreloader = window.finalizePreloader;
 
 // Utility to strip HTML for pure text excerpts
 const stripHtml = (html) => {
@@ -310,21 +297,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         el.classList.add('glitch-stop');
                     });
 
-                    // Wait for critical content before finishing
-                    try {
-                        await pageReadyPromise;
-                    } catch(e) { console.warn("Page ready promise failed", e); }
-                    
                     sessionStorage.setItem('asif_preloader_seen', 'true');
-                    setTimeout(() => {
-                        if (typeof window.finalizePreloader === 'function') {
-                            window.finalizePreloader();
-                        }
-                    }, 400); 
+                    window.finalizePreloader();
                 } else {
                     textElements.forEach(el => el.style.setProperty('--loading-progress', count + '%'));
                 }
-            }, 40);
+            }, 30);
         }
     } else {
         window.finalizePreloader(); // Fallback if no preloader element
