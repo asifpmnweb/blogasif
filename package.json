@@ -4,8 +4,7 @@
   "description": "Premium Digital Blog",
   "main": "index.html",
   "scripts": {
-    "start": "servor ./ 8080 --browse",
-    "build": "echo 'Build complete.'"
+    "start": "servor ./ 8080 --browse"
   },
   "devDependencies": {
     "servor": "^4.0.0"
