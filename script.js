@@ -56,20 +56,24 @@ applyTheme();
 
 // Content protection disabled per user request
 
-// Consolidate preloader logic to avoid conflicts
+// Consolidated preloader logic to ensure it always hides properly
 window.finalizePreloader = () => {
     const preloader = document.getElementById('preloader');
-    if (!preloader) return;
-
+    
+    // Stop any glitch animations immediately
     const texts = document.querySelectorAll('.loading-text-filling, .loading-subtext-filling');
     texts.forEach(t => t.classList.add('glitch-stop'));
 
+    // Apply the "loaded" class to trigger shutter animations
     document.body.classList.add('loaded');
 
+    // After shutters open, hide the preloader div entirely
     setTimeout(() => {
-        if (preloader) preloader.style.display = 'none';
+        if (preloader) {
+            preloader.style.display = 'none';
+        }
 
-        // Trigger initial reveal animations immediately when shutters open
+        // Reveal any elements that should animate in immediately
         document.querySelectorAll('.reveal').forEach(el => {
             const rect = el.getBoundingClientRect();
             if (rect.top < window.innerHeight) {
@@ -77,27 +81,10 @@ window.finalizePreloader = () => {
             }
         });
     }, 1200);
-}
+};
 
-function finalizePreloader() {
-    const texts = document.querySelectorAll('.loading-text-filling, .loading-subtext-filling');
-    texts.forEach(t => t.classList.add('glitch-stop'));
-
-    document.body.classList.add('loaded');
-
-    setTimeout(() => {
-        const loader = document.getElementById('preloader');
-        if (loader) loader.style.display = 'none';
-
-        // Trigger initial reveal animations immediately when shutters open
-        document.querySelectorAll('.reveal').forEach(el => {
-            const rect = el.getBoundingClientRect();
-            if (rect.top < window.innerHeight) {
-                el.classList.add('visible');
-            }
-        });
-    }, 1200);
-}
+// Ensure the function is available under both common names to prevent errors
+const finalizePreloader = window.finalizePreloader;
 
 // Utility to strip HTML for pure text excerpts
 const stripHtml = (html) => {
@@ -226,6 +213,62 @@ const compressMedia = (file, callback) => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Shared Watermarking Utility
+    window.addVisualWatermarkToImg = (img) => {
+        if (!img || img.dataset.watermarked || img.parentElement.classList.contains('watermark-wrapper')) return;
+        const processImg = () => {
+            if (img.width < 150) return;
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width; canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Load Logo for Watermark
+                const logo = new Image();
+                logo.crossOrigin = "anonymous";
+                logo.src = "/logo.png";
+                logo.onload = () => {
+                    const logoSize = Math.floor(canvas.width * 0.15); // 15% of image width
+                    const padding = 20;
+                    const x = canvas.width - logoSize - padding;
+                    const y = padding;
+                    ctx.globalAlpha = 0.15;
+                    ctx.drawImage(logo, x, y, logoSize, (logoSize * logo.height) / logo.width);
+                    ctx.globalAlpha = 1.0;
+
+                    canvas.toBlob((blob) => {
+                        const watermarkedUrl = URL.createObjectURL(blob);
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'watermark-wrapper';
+                        wrapper.setAttribute('style', 'position:relative; display:inline-block; width:100%; overflow:hidden;');
+                        img.parentNode.insertBefore(wrapper, img);
+                        const watermarkedOverlay = new Image();
+                        watermarkedOverlay.src = watermarkedUrl;
+                        watermarkedOverlay.setAttribute('style', 'position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; opacity:0.1; z-index:10;');
+                        img.style.position = 'relative';
+                        img.style.zIndex = '1';
+                        img.style.pointerEvents = 'none';
+                        wrapper.appendChild(img);
+                        wrapper.appendChild(watermarkedOverlay);
+                        img.dataset.watermarked = 'true';
+                    }, 'image/webp', 0.85);
+                };
+                logo.onerror = () => {
+                    ctx.font = '24px Inter';
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.fillText('Asif Ansari', 20, 40);
+                    img.dataset.watermarked = 'true';
+                };
+            } catch (e) {
+                img.dataset.watermarked = 'true';
+            }
+        };
+        if (!img.crossOrigin) { img.crossOrigin = "anonymous"; }
+        if (img.complete) processImg();
+        else img.addEventListener('load', processImg, { once: true });
+    };
+
     // 0. Environment and Page state
     const isArticlePage = window.location.pathname.includes('article') || window.location.search.includes('id=');
     const isDashboard = window.location.pathname.includes('admin') || window.location.pathname.includes('upload');
@@ -268,10 +311,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
 
                     // Wait for critical content before finishing
-                    await pageReadyPromise;
-
+                    try {
+                        await pageReadyPromise;
+                    } catch(e) { console.warn("Page ready promise failed", e); }
+                    
                     sessionStorage.setItem('asif_preloader_seen', 'true');
-                    setTimeout(window.finalizePreloader, 400); // Shorter delay
+                    setTimeout(() => {
+                        if (typeof window.finalizePreloader === 'function') {
+                            window.finalizePreloader();
+                        }
+                    }, 400); 
                 } else {
                     textElements.forEach(el => el.style.setProperty('--loading-progress', count + '%'));
                 }
@@ -887,6 +936,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         else allArticlesContainer.parentElement.style.display = 'none';
     }
 
+    // Apply branding watermark to Homepage Hero Slides if we are on Home
+    if (!isArticlePage && !isDashboard) {
+        setTimeout(() => {
+            const heroImgs = document.querySelectorAll('.hero-image-wrapper img');
+            if (heroImgs.length > 0) {
+                heroImgs.forEach(img => {
+                    if (typeof addVisualWatermarkToImg === 'function') {
+                        addVisualWatermarkToImg(img);
+                    }
+                });
+            }
+        }, 1000);
+    }
+
     const tiltElements = document.querySelectorAll('.article-card, .blog-list-item');
     tiltElements.forEach(el => {
         el.style.transformStyle = 'preserve-3d';
@@ -1304,69 +1367,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Apply dynamic frontend watermark
             setTimeout(() => {
-                const addVisualWatermarkToImg = (img) => {
-                    if (!img || img.dataset.watermarked || img.parentElement.classList.contains('watermark-wrapper')) return;
-                    const processImg = () => {
-                        if (img.width < 150) return;
-                        try {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = img.width; canvas.height = img.height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                            // Load Logo for Watermark
-                            const logo = new Image();
-                            logo.crossOrigin = "anonymous";
-                            logo.src = "/logo.png";
-                            logo.onload = () => {
-                                // Position: Top Right
-                                const logoSize = Math.floor(canvas.width * 0.15); // 15% of image width
-                                const padding = 20;
-                                const x = canvas.width - logoSize - padding;
-                                const y = padding;
-
-                                ctx.globalAlpha = 0.15; // Visibility of overlap
-                                ctx.drawImage(logo, x, y, logoSize, (logoSize * logo.height) / logo.width);
-                                ctx.globalAlpha = 1.0;
-
-                                canvas.toBlob((blob) => {
-                                    const watermarkedUrl = URL.createObjectURL(blob);
-                                    const wrapper = document.createElement('div');
-                                    wrapper.className = 'watermark-wrapper';
-                                    wrapper.setAttribute('style', 'position:relative; display:inline-block; width:100%; overflow:hidden;');
-
-                                    img.parentNode.insertBefore(wrapper, img);
-
-                                    const watermarkedOverlay = new Image();
-                                    watermarkedOverlay.src = watermarkedUrl;
-                                    watermarkedOverlay.setAttribute('style', 'position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; opacity:0.1; z-index:10;');
-
-                                    img.style.position = 'relative';
-                                    img.style.zIndex = '1';
-                                    img.style.pointerEvents = 'none';
-
-                                    wrapper.appendChild(img);
-                                    wrapper.appendChild(watermarkedOverlay);
-                                    img.dataset.watermarked = 'true';
-                                }, 'image/webp', 0.85);
-                            };
-                            logo.onerror = () => {
-                                // Fallback to text if logo fails
-                                ctx.font = '24px Inter';
-                                ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                                ctx.fillText('Asif Ansari', 20, 40);
-                                img.dataset.watermarked = 'true';
-                            };
-                        } catch (e) { img.dataset.watermarked = 'true'; img.addEventListener('contextmenu', e => e.preventDefault()); }
-                    };
-                    if (!img.crossOrigin) { img.crossOrigin = "anonymous"; }
-                    if (img.complete) processImg();
-                    else img.addEventListener('load', processImg, { once: true });
-                };
-                if (imgEl) addVisualWatermarkToImg(imgEl);
-                if (bodyEl) bodyEl.querySelectorAll('img').forEach(addVisualWatermarkToImg);
-                // Apply to Homepage Hero Slides
-                document.querySelectorAll('.hero-image-wrapper img').forEach(addVisualWatermarkToImg);
+                if (imgEl && typeof window.addVisualWatermarkToImg === 'function') window.addVisualWatermarkToImg(imgEl);
+                if (bodyEl) {
+                    bodyEl.querySelectorAll('img').forEach(img => {
+                        if (typeof window.addVisualWatermarkToImg === 'function') window.addVisualWatermarkToImg(img);
+                    });
+                }
             }, 300);
 
             const catEl = document.getElementById('article-category-label');
