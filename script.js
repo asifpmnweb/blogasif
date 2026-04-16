@@ -325,10 +325,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             window.globalArticles = JSON.parse(cached);
             usedCache = true;
+            // Immediate initial render from cache
+            setTimeout(() => {
+                if (typeof window.renderArticles === 'function') window.renderArticles();
+                if (typeof window.renderAdminList === 'function' && isDashboard) window.renderAdminList(window.globalArticles);
+            }, 0);
+            
             // Background Revalidate via API
             fetch('/api/posts').then(res => res.json()).then(data => {
                 if (data && JSON.stringify(data) !== cached) {
+                    window.globalArticles = data;
                     localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                    if (typeof window.renderArticles === 'function') window.renderArticles();
                 }
             }).catch(e => console.warn('Background API fetch failed'));
         } catch (e) { console.error('Cache parse error'); }
@@ -390,22 +398,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (response.ok) {
                 const data = await response.json();
                 window.globalArticles = data || [];
-                localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                localStorage.setItem(CACHE_KEY, JSON.stringify(window.globalArticles));
+                if (typeof window.renderArticles === 'function') window.renderArticles();
+                if (typeof window.renderAdminList === 'function' && isDashboard) window.renderAdminList(window.globalArticles);
+            } else {
+                throw new Error("API not ok");
             }
         } catch (e) {
-            console.error('Initial API fetch failed:', e);
-            // Emergency fallback to direct Supabase if API fails
+            console.error('Initial API fetch failed, trying direct Supabase:', e);
             if (sbClient) {
                 try {
-                    const { data } = await sbClient.from('articles').select('*').limit(30);
-                    if (data) {
-                        window.globalArticles = data;
-                        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-                    }
-                } catch (err) { console.error("Supabase fallback failed", err); }
-            } else {
-                // Last resort: local cache
-                const backup = localStorage.getItem(CACHE_KEY);
                 if (backup) window.globalArticles = JSON.parse(backup);
             }
         }
@@ -858,75 +860,83 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
     };
 
-    const gridContainer = document.querySelector('.articles-grid');
-    const listContainer = document.querySelector('.new-blogs-list');
-    const vlogsContainer = document.querySelector('.vlogs-list');
-    const allArticlesContainer = document.querySelector('.all-articles-list');
+    window.renderArticles = () => {
+        const gridContainer = document.querySelector('.articles-grid');
+        const listContainer = document.querySelector('.new-blogs-list');
+        const vlogsContainer = document.querySelector('.vlogs-list');
+        const allArticlesContainer = document.querySelector('.all-articles-list');
+
+        const activeArticles = (window.globalArticles || []).filter(a => !a.archived && !a.unlisted).sort((a, b) => {
+            const dA = new Date(a.date);
+            const dB = new Date(b.date);
+            if (!isNaN(dA) && !isNaN(dB)) return dB - dA;
+            return 0;
+        });
+
+        if (activeArticles.length === 0) return;
+
+        if (gridContainer) gridContainer.innerHTML = '';
+        if (listContainer) listContainer.innerHTML = '';
+        if (vlogsContainer) vlogsContainer.innerHTML = '';
+        if (allArticlesContainer) allArticlesContainer.innerHTML = '';
+
+        if (gridContainer && !gridContainer.classList.contains('vlogs-list') && !gridContainer.classList.contains('all-articles-list')) {
+            let trending = activeArticles.slice(0, 3);
+            if (trending.length > 0) trending.forEach((a, idx) => gridContainer.insertAdjacentHTML('beforeend', buildCard(a, idx)));
+            else gridContainer.parentElement.style.display = 'none';
+        }
+
+        if (listContainer) {
+            let blogPosts = activeArticles.slice(3, 9);
+            if (blogPosts.length > 0) blogPosts.forEach((a, idx) => listContainer.insertAdjacentHTML('beforeend', buildListItem(a, idx)));
+            else listContainer.parentElement.style.display = 'none';
+        }
+
+        if (vlogsContainer) {
+            let vlogs = activeArticles.filter(a => a.category.toLowerCase().includes('vlog'));
+            if (vlogs.length === 0) vlogs = activeArticles.slice(0, 6);
+            if (vlogs.length > 0) vlogs.forEach((a, idx) => vlogsContainer.insertAdjacentHTML('beforeend', buildCard(a, idx)));
+            else vlogsContainer.parentElement.style.display = 'none';
+        }
+
+        if (allArticlesContainer) {
+            if (activeArticles.length > 0) activeArticles.forEach((a, idx) => allArticlesContainer.insertAdjacentHTML('beforeend', buildCard(a, idx)));
+            else allArticlesContainer.parentElement.style.display = 'none';
+        }
+
+        // Apply branding watermark to Homepage Hero Slides if we are on Home
+        if (!isArticlePage && !isDashboard) {
+            setTimeout(() => {
+                const heroImgs = document.querySelectorAll('.hero-image-wrapper img');
+                if (heroImgs.length > 0) {
+                    heroImgs.forEach(img => {
+                        if (typeof window.addVisualWatermarkToImg === 'function') {
+                            window.addVisualWatermarkToImg(img);
+                        }
+                    });
+                }
+            }, 1000);
+        }
+    };
 
     const showSkeletons = (container, count = 3) => {
         if (!container) return;
         container.innerHTML = '';
         for (let i = 0; i < count; i++) {
-            container.innerHTML += `
-                <div class="article-card glass-effect skeleton-loader" style="height: 480px; width: 350px; opacity: 0.5;"></div>
-            `;
+            container.innerHTML += `<div class="article-card glass-effect skeleton-loader" style="height: 480px; width: 350px; opacity: 0.5;"></div>`;
         }
     };
+
+    // Initial skeleton loading
+    const gridContainer = document.querySelector('.articles-grid');
+    const listContainer = document.querySelector('.new-blogs-list');
+    const vlogsContainer = document.querySelector('.vlogs-list');
+    const allArticlesContainer = document.querySelector('.all-articles-list');
 
     showSkeletons(gridContainer);
     showSkeletons(listContainer, 3);
     showSkeletons(vlogsContainer);
     showSkeletons(allArticlesContainer, 6);
-
-    const activeArticles = (window.globalArticles || []).filter(a => !a.archived && !a.unlisted).sort((a, b) => {
-        const dA = new Date(a.date);
-        const dB = new Date(b.date);
-        if (!isNaN(dA) && !isNaN(dB)) return dB - dA;
-        return 0;
-    });
-
-    if (gridContainer) gridContainer.innerHTML = '';
-    if (listContainer) listContainer.innerHTML = '';
-    if (vlogsContainer) vlogsContainer.innerHTML = '';
-    if (allArticlesContainer) allArticlesContainer.innerHTML = '';
-
-    if (gridContainer && !gridContainer.classList.contains('vlogs-list') && !gridContainer.classList.contains('all-articles-list')) {
-        let trending = activeArticles.slice(0, 3);
-        if (trending.length > 0) trending.forEach((a, idx) => gridContainer.insertAdjacentHTML('beforeend', buildCard(a, idx)));
-        else gridContainer.parentElement.style.display = 'none';
-    }
-
-    if (listContainer) {
-        let blogPosts = activeArticles.slice(3, 9);
-        if (blogPosts.length > 0) blogPosts.forEach((a, idx) => listContainer.insertAdjacentHTML('beforeend', buildListItem(a, idx)));
-        else listContainer.parentElement.style.display = 'none';
-    }
-
-    if (vlogsContainer) {
-        let vlogs = activeArticles.filter(a => a.category.toLowerCase().includes('vlog'));
-        if (vlogs.length === 0) vlogs = activeArticles.slice(0, 6);
-        if (vlogs.length > 0) vlogs.forEach((a, idx) => vlogsContainer.insertAdjacentHTML('beforeend', buildCard(a, idx)));
-        else vlogsContainer.parentElement.style.display = 'none';
-    }
-
-    if (allArticlesContainer) {
-        if (activeArticles.length > 0) activeArticles.forEach((a, idx) => allArticlesContainer.insertAdjacentHTML('beforeend', buildCard(a, idx)));
-        else allArticlesContainer.parentElement.style.display = 'none';
-    }
-
-    // Apply branding watermark to Homepage Hero Slides if we are on Home
-    if (!isArticlePage && !isDashboard) {
-        setTimeout(() => {
-            const heroImgs = document.querySelectorAll('.hero-image-wrapper img');
-            if (heroImgs.length > 0) {
-                heroImgs.forEach(img => {
-                    if (typeof addVisualWatermarkToImg === 'function') {
-                        addVisualWatermarkToImg(img);
-                    }
-                });
-            }
-        }, 1000);
-    }
 
     const tiltElements = document.querySelectorAll('.article-card, .blog-list-item');
     tiltElements.forEach(el => {
