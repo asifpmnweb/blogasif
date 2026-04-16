@@ -23,6 +23,10 @@
         {
             "source": "/article/:slug",
             "destination": "/article"
+        },
+        {
+            "source": "/sitemap.xml",
+            "destination": "/api/sitemap.xml"
         }
     ]
 }

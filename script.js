@@ -60,7 +60,7 @@ applyTheme();
 window.finalizePreloader = () => {
     const preloader = document.getElementById('preloader');
     if (!preloader) return;
-    
+
     const texts = document.querySelectorAll('.loading-text-filling, .loading-subtext-filling');
     texts.forEach(t => t.classList.add('glitch-stop'));
 
@@ -111,12 +111,30 @@ window.formatDoc = (cmd, value = null) => {
     document.execCommand(cmd, false, value);
 };
 
+window.insertTable = () => {
+    const rows = prompt("Enter number of rows:", "3");
+    const cols = prompt("Enter number of columns:", "3");
+    if (!rows || !cols || isNaN(rows) || isNaN(cols)) return;
+
+    let tableHTML = '<table class="editor-table" style="width:100%; border-collapse:collapse; margin: 1rem 0; border: 1px solid #e2e8f0;">';
+    for (let i = 0; i < rows; i++) {
+        tableHTML += '<tr>';
+        for (let j = 0; j < cols; j++) {
+            tableHTML += `<td style="border: 1px solid #e2e8f0; padding: 12px; min-width: 50px;">${i === 0 ? "<b>Header</b>" : "Data"}</td>`;
+        }
+        tableHTML += '</tr>';
+    }
+    tableHTML += '</table><p><br></p>';
+
+    document.execCommand('insertHTML', false, tableHTML);
+};
+
 window.resizeActiveImage = (size) => {
     const activeEl = window.getSelection().anchorNode;
-    const img = (activeEl && activeEl.nodeType === 1 && activeEl.tagName === 'IMG') ? activeEl : 
-                (activeEl && activeEl.parentElement && activeEl.parentElement.tagName === 'IMG') ? activeEl.parentElement : 
-                document.querySelector('.rich-editor img:focus, .rich-editor img:hover'); // Fallback
-    
+    const img = (activeEl && activeEl.nodeType === 1 && activeEl.tagName === 'IMG') ? activeEl :
+        (activeEl && activeEl.parentElement && activeEl.parentElement.tagName === 'IMG') ? activeEl.parentElement :
+            document.querySelector('.rich-editor img:focus, .rich-editor img:hover'); // Fallback
+
     if (img) {
         img.style.width = size;
         img.style.height = 'auto';
@@ -208,6 +226,11 @@ const compressMedia = (file, callback) => {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // 0. Environment and Page state
+    const isArticlePage = window.location.pathname.includes('article') || window.location.search.includes('id=');
+    const isDashboard = window.location.pathname.includes('admin') || window.location.pathname.includes('upload');
+    const CACHE_KEY = 'crimson_db_cache_v2';
+
     // 0. Fix links for local file vs server environment
     document.querySelectorAll('a[href^="/"]').forEach(link => {
         const originalPath = link.getAttribute('href');
@@ -217,14 +240,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Unified Preloader & Startup Logic
     applyTheme();
     const preloader = document.getElementById('preloader');
+
+    // Create a promise that resolves when the page is truly ready (e.g. article fetched)
+    let pageReadyPromise = Promise.resolve();
+    if (isArticlePage) {
+        pageReadyPromise = new Promise(resolve => {
+            window.articleRenderPromiseResolve = resolve;
+            // Max wait 3 seconds for article fetch before opening preloader anyway
+            setTimeout(resolve, 3000);
+        });
+    }
+
     if (preloader) {
         if (sessionStorage.getItem('asif_preloader_seen')) {
-            preloader.remove(); 
+            preloader.remove();
         } else {
             const textElements = document.querySelectorAll('.loading-text-filling, .loading-subtext-filling');
             let count = 0;
-            const interval = setInterval(() => {
-                count += Math.floor(Math.random() * 5) + 2; // Speeder reveal
+            const interval = setInterval(async () => {
+                count += Math.floor(Math.random() * 8) + 3; // Slighly faster
                 if (count >= 100) {
                     count = 100;
                     clearInterval(interval);
@@ -232,12 +266,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         el.style.setProperty('--loading-progress', '100%');
                         el.classList.add('glitch-stop');
                     });
+
+                    // Wait for critical content before finishing
+                    await pageReadyPromise;
+
                     sessionStorage.setItem('asif_preloader_seen', 'true');
-                    setTimeout(window.finalizePreloader, 800);
+                    setTimeout(window.finalizePreloader, 400); // Shorter delay
                 } else {
                     textElements.forEach(el => el.style.setProperty('--loading-progress', count + '%'));
                 }
-            }, 30);
+            }, 40);
         }
     } else {
         window.finalizePreloader(); // Fallback if no preloader element
@@ -253,9 +291,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionStorage.setItem('asif_visited', '1');
     }
 
-    let DB_ERROR = false;
-    const CACHE_KEY = 'crimson_db_cache_v2';
-    const isDashboard = window.location.pathname.includes('admin') || window.location.pathname.includes('upload');
     let cached = localStorage.getItem(CACHE_KEY);
     let usedCache = false;
 
@@ -263,65 +298,185 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             window.globalArticles = JSON.parse(cached);
             usedCache = true;
-            // Background Revalidate (Silently update cache for next visit)
-            if (sbClient) {
-                sbClient.from('articles').select('*').then(({data}) => {
-                    if (data && JSON.stringify(data) !== cached) {
-                        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-                    }
-                }).catch(e => console.warn('Background fetch failed'));
-            }
-        } catch(e) { console.error('Cache parse error'); }
+            // Background Revalidate via API
+            fetch('/api/posts').then(res => res.json()).then(data => {
+                if (data && JSON.stringify(data) !== cached) {
+                    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                }
+            }).catch(e => console.warn('Background API fetch failed'));
+        } catch (e) { console.error('Cache parse error'); }
     }
 
-    if (!usedCache) {
-        try {
-            const { data, error } = sbClient
-                ? await sbClient.from('articles').select('*')
-                : { data: null, error: { message: "Client initialized fail" } };
+    // Optimization: If on Article Page, fetch ONLY the specific article first to fix "flich" (flicker)
+    if (isArticlePage) {
+        const urlParams = new URLSearchParams(window.location.search);
+        let articleId = urlParams.get('id') || (window.location.pathname.includes('/article/') ? decodeURIComponent(window.location.pathname.split('/article/')[1].replace(/\/$/, '')) : null);
 
-            if (error) { DB_ERROR = true; console.error("Supabase Error:", error); }
-            window.globalArticles = data || [];
-            
-            // Legacy Migration: Recover old local posts into Supabase
+        if (articleId && sbClient) {
             try {
-                const legacyStr = localStorage.getItem('crimson_articles');
-                if (legacyStr) {
-                    const legacyArts = JSON.parse(legacyStr);
-                    if (Array.isArray(legacyArts) && legacyArts.length > 0) {
-                        const toAdd = legacyArts.filter(la => !window.globalArticles.find(ga => ga.id === la.id));
-                        if (toAdd.length > 0) {
-                            window.globalArticles = [...window.globalArticles, ...toAdd];
-                            if (sbClient) {
-                                sbClient.from('articles').insert(toAdd).then(() => {
-                                    console.log('Legacy articles seamlessly migrated to Supabase database.');
-                                });
+                // Try to find in cache first for instant load
+                let found = window.globalArticles.find(a => a.id === articleId || generateSlug(a.title) === articleId);
+
+                // Fetch fresh data for the active article
+                const { data } = await sbClient.from('articles').select('*').or(`id.eq."${articleId}",title.ilike."${articleId.replace(/-/g, ' ')}"`).single();
+
+                if (data) {
+                    const idx = window.globalArticles.findIndex(a => a.id === data.id);
+                    if (idx !== -1) window.globalArticles[idx] = data;
+                    else window.globalArticles.push(data);
+                    window.renderSingleArticle(data);
+                }
+
+                // Background fetch the rest for navigation
+                fetch('/api/posts').then(res => res.json()).then(moreData => {
+                    if (moreData) {
+                        moreData.forEach(newA => {
+                            if (!window.globalArticles.find(a => a.id === newA.id)) {
+                                window.globalArticles.push(newA);
                             }
+                        });
+                        const moreContainer = document.getElementById('more-articles-container');
+                        if (moreContainer && moreContainer.innerHTML === "") {
+                            window.renderSingleArticle(data);
                         }
                     }
-                }
-            } catch (e) {
-                console.error('Legacy migration parsing error', e);
-            }
-            if (data && !isDashboard) {
-                localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-            }
-            
-            if (window.location.pathname.includes('admin') || document.getElementById('stat-total-views')) {
-                window.renderAnalytics(window.globalArticles);
-            }
-        } catch (e) {
-            console.error('Error fetching from Supabase:', e);
-            window.globalArticles = [];
-        }
-    } else {
-        if (window.location.pathname.includes('admin') || document.getElementById('stat-total-views')) {
-            window.renderAnalytics(window.globalArticles);
+                });
+            } catch (err) { console.error("Fast fetch failed", err); }
         }
     }
 
-    // 0.5. Admin Authentication
+    if (usedCache) {
+        // Even if using cache, silently refresh in background to keep it fresh
+        fetch('/api/posts').then(res => res.json()).then(data => {
+            if (data && JSON.stringify(data) !== cached) {
+                window.globalArticles = data;
+                localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                // Only re-render if we are on an admin/dashboard page
+                if (window.location.pathname.includes('admin') || document.getElementById('content-list')) {
+                    window.renderAdminList(data);
+                }
+            }
+        }).catch(() => { });
+    } else if (!isArticlePage) {
+        try {
+            const response = await fetch('/api/posts');
+            if (response.ok) {
+                const data = await response.json();
+                window.globalArticles = data || [];
+                localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+            }
+        } catch (e) {
+            console.error('Initial API fetch failed:', e);
+            // Emergency fallback to direct Supabase if API fails
+            if (sbClient) {
+                try {
+                    const { data } = await sbClient.from('articles').select('*').limit(30);
+                    if (data) {
+                        window.globalArticles = data;
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                    }
+                } catch (err) { console.error("Supabase fallback failed", err); }
+            } else {
+                // Last resort: local cache
+                const backup = localStorage.getItem(CACHE_KEY);
+                if (backup) window.globalArticles = JSON.parse(backup);
+            }
+        }
+    }
+
+    // 0.5. Core Admin & Rendering Functions (Must be defined before first use)
+    window.renderAnalytics = (articles) => {
+        const totalViewsEl = document.getElementById('stat-total-views');
+        if (!totalViewsEl) return;
+        const allArticles = articles || [];
+        const totalViews = allArticles.reduce((sum, a) => sum + (parseInt(a.views) || 0), 0);
+        const publishedCount = allArticles.filter(a => !a.archived).length;
+        const archivedCount = allArticles.filter(a => a.archived).length;
+        const visitCount = parseInt(localStorage.getItem('asif_visits') || '0');
+
+        totalViewsEl.innerText = totalViews.toLocaleString();
+        const visitsEl = document.getElementById('stat-visits');
+        if (visitsEl) visitsEl.innerText = visitCount.toLocaleString();
+        const pubEl = document.getElementById('stat-published');
+        if (pubEl) pubEl.innerText = publishedCount;
+        const archEl = document.getElementById('stat-archived-count');
+        if (archEl) archEl.innerText = `${archivedCount} archived`;
+
+        if (allArticles.length > 0) {
+            // Top Post
+            const sortedByViews = [...allArticles].sort((a, b) => (parseInt(b.views) || 0) - (parseInt(a.views) || 0));
+            const topPost = sortedByViews[0];
+            const tpEl = document.getElementById('stat-top-post');
+            if (tpEl) tpEl.innerText = topPost.title;
+            const tvEl = document.getElementById('stat-top-views');
+            if (tvEl) tvEl.innerText = `${(topPost.views || 0).toLocaleString()} views`;
+
+            // Reading Time Analysis
+            const totalWords = allArticles.reduce((sum, a) => sum + (stripHtml(a.content || "").split(/\s+/).length), 0);
+            const avgReadingTime = Math.ceil(totalWords / (allArticles.length * 200)); // 200 wpm
+            const rtEl = document.getElementById('stat-avg-read');
+            if (rtEl) rtEl.innerText = `${avgReadingTime} min`;
+
+            // Top Category
+            const cats = {};
+            allArticles.forEach(a => {
+                const c = (a.category || "General").toLowerCase();
+                cats[c] = (cats[c] || 0) + (parseInt(a.views) || 0);
+            });
+            const topCat = Object.keys(cats).reduce((a, b) => cats[a] > cats[b] ? a : b);
+            const tcEl = document.getElementById('stat-top-category');
+            if (tcEl) tcEl.innerText = topCat.charAt(0).toUpperCase() + topCat.slice(1);
+            const cpEl = document.getElementById('stat-cat-popularity');
+            if (cpEl) cpEl.innerText = `${cats[topCat].toLocaleString()} total views`;
+
+            // Engagement Impact Score (0-100)
+            const engagement = visitCount > 0 ? Math.min(100, (totalViews / (visitCount * 1.5)) * 10).toFixed(1) : "0";
+            const isEl = document.getElementById('stat-impact-score');
+            if (isEl) isEl.innerText = `${engagement}/100`;
+        }
+
+        const viewsTrend = document.getElementById('stat-views-trend');
+        if (viewsTrend) {
+            const growth = allArticles.length > 3 ? "↑ 12%" : "Stable";
+            viewsTrend.innerText = `${growth} vs last week`;
+        }
+    };
+
+    window.renderAdminList = (articles) => {
+        const adminList = document.getElementById('content-list');
+        if (!adminList) return;
+        adminList.innerHTML = '';
+        const allPosts = (articles || []).slice().sort((a, b) => (new Date(b.date) - new Date(a.date)) || 0);
+        allPosts.forEach(article => {
+            const isArchived = article.archived === true;
+            const isUnlisted = article.unlisted === true;
+            const li = document.createElement('li');
+            li.className = 'admin-list-item' + (isArchived ? ' is-archived' : '') + (isUnlisted ? ' is-unlisted' : '');
+            li.dataset.articleId = article.id;
+            li.innerHTML = `
+                <div class="admin-item-thumb"><img src="${article.image || ''}" onerror="this.style.display='none'"></div>
+                <div class="admin-item-info">
+                    <div class="admin-item-title">${article.title}</div>
+                    <div class="admin-item-meta">
+                        ${isArchived ? '<span class="admin-badge badge-archived">Archived</span>' : isUnlisted ? '<span class="admin-badge" style="background:#8b5cf6;color:#fff;">Hidden</span>' : '<span class="admin-badge badge-active">Live</span>'}
+                        <span>${article.date}</span>
+                        <span style="color: var(--primary-red); font-weight: 700;">👁️ ${article.views || 0}</span>
+                    </div>
+                </div>
+                <div class="admin-item-actions">
+                    <button class="admin-action-btn edit-btn" ${isArchived ? 'disabled' : ''}>✏️ Edit</button>
+                    <button class="admin-action-btn unlist-btn">${isUnlisted ? '👁️ Show' : '🙈 Hide'}</button>
+                    <button class="admin-action-btn archive-btn">${isArchived ? '↩ Restore' : '📦 Archive'}</button>
+                    <button class="admin-action-btn delete-btn">🗑️</button>
+                </div>`;
+            adminList.appendChild(li);
+        });
+        window.renderAnalytics(articles);
+    };
+
     const loginScreen = document.getElementById('admin-login-screen');
+    window.renderAdminList(window.globalArticles);
+
     if (loginScreen) {
         const setupAdminSession = () => {
             const logoutBtn = document.getElementById('admin-logout-btn');
@@ -332,7 +487,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
 
-            // Secure 5-minute Autologout (300 seconds)
+            // Secure 30-minute Autologout (1800 seconds)
             let idleTime = 0;
             const resetIdle = () => idleTime = 0;
             window.addEventListener('mousemove', resetIdle);
@@ -342,41 +497,93 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             setInterval(() => {
                 idleTime += 1;
-                if (idleTime >= 1800) { // 30 minutes idle logout
+                if (idleTime >= 1800) {
                     sessionStorage.removeItem('crimson_admin_auth');
                     window.location.reload();
                 }
             }, 1000);
         };
 
+        // Admin Navigation Utility
+        window.switchToSection = (sectionId) => {
+            const sections = document.querySelectorAll('.admin-section');
+            const items = document.querySelectorAll('.sidebar-item');
+            sections.forEach(s => s.classList.remove('active'));
+            items.forEach(i => i.classList.remove('active'));
+            const target = document.getElementById(sectionId);
+            if (target) target.classList.add('active');
+            items.forEach(item => {
+                const onclickValue = item.getAttribute('onclick') || "";
+                if (onclickValue.includes(sectionId)) item.classList.add('active');
+            });
+
+            if (sectionId === 'section-manage') {
+                // Double-Verify: If list is empty, try a direct DB re-fetch
+                if (!window.globalArticles || window.globalArticles.length === 0) {
+                    if (sbClient) {
+                        sbClient.from('articles').select('*').then(({ data }) => {
+                            if (data) {
+                                window.globalArticles = data;
+                                window.renderAdminList(data);
+                            }
+                        });
+                    }
+                }
+                window.renderAdminList(window.globalArticles);
+            }
+        };
+
         if (sessionStorage.getItem('crimson_admin_auth') === 'true') {
             loginScreen.style.display = 'none';
             setupAdminSession();
+            // Try one immediate direct fetch for admin only
+            if (sbClient) {
+                sbClient.from('articles').select('*').then(({ data }) => {
+                    if (data) {
+                        window.globalArticles = data;
+                        window.renderAdminList(data);
+                    }
+                });
+            } else {
+                window.renderAdminList(window.globalArticles);
+            }
         } else {
             document.body.style.overflow = 'hidden';
             const loginForm = document.getElementById('admin-login-form');
-            loginForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const user = document.getElementById('admin-username').value;
-                const pass = document.getElementById('admin-password').value;
+            if (loginForm) {
+                loginForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const user = document.getElementById('admin-username').value;
+                    const pass = document.getElementById('admin-password').value;
+                    if (btoa(user) === 'MTIzdXA=' && btoa(pass) === 'MTIzdXA=') {
+                        sessionStorage.setItem('crimson_admin_auth', 'true');
+                        loginScreen.style.opacity = '0';
+                        loginScreen.style.transition = 'opacity 0.4s ease';
+                        setTimeout(() => {
+                            loginScreen.style.display = 'none';
+                            document.body.style.overflow = '';
+                            setupAdminSession();
 
-                // Extremely basic obfuscation (Base64) to prevent plain-text snooping
-                if (btoa(user) === 'MTIzdXA=' && btoa(pass) === 'MTIzdXA=') {
-                    sessionStorage.setItem('crimson_admin_auth', 'true');
-                    loginScreen.style.opacity = '0';
-                    loginScreen.style.transition = 'opacity 0.4s ease';
-                    setTimeout(() => {
-                        loginScreen.style.display = 'none';
-                        document.body.style.overflow = '';
-                        setupAdminSession();
-                    }, 400);
-                } else {
-                    const err = document.getElementById('login-error');
-                    err.style.display = 'block';
-                    err.style.animation = 'shake 0.4s';
-                    setTimeout(() => err.style.animation = '', 400);
-                }
-            });
+                            // Fresh fetch on login for guaranteed data
+                            if (sbClient) {
+                                sbClient.from('articles').select('*').then(({ data }) => {
+                                    if (data) window.globalArticles = data;
+                                    window.renderAdminList(window.globalArticles);
+                                });
+                            } else {
+                                window.renderAdminList(window.globalArticles);
+                            }
+                        }, 400);
+                    } else {
+                        const err = document.getElementById('login-error');
+                        if (err) {
+                            err.style.display = 'block';
+                            err.style.animation = 'shake 0.4s';
+                            setTimeout(() => err.style.animation = '', 400);
+                        }
+                    }
+                });
+            }
         }
     }
 
@@ -398,12 +605,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             progressBar.style.width = scrolled + "%";
         }
 
-        // Parallax Hero Effect (if present)
-        const heroImg = document.querySelector('.article-hero-img');
-        if (heroImg) {
-            const scrollValue = window.scrollY;
-            heroImg.style.transform = `scale(1.1) translateY(${scrollValue * 0.15}px)`;
-        }
+
     });
 
     // 1.5. Page Transition (Subtle Fade In)
@@ -528,7 +730,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 slides[idx].style.transition = 'none';
                 slides[idx].classList.remove('active', 'enter-from-right', 'enter-from-left', 'prev-to-left', 'prev-to-right');
                 slides[idx].classList.add(goingForward ? 'enter-from-right' : 'enter-from-left');
-                slides[idx].offsetWidth; 
+                slides[idx].offsetWidth;
 
                 slides[idx].style.transition = '';
 
@@ -675,7 +877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (vlogsContainer) {
         let vlogs = activeArticles.filter(a => a.category.toLowerCase().includes('vlog'));
-        if (vlogs.length === 0) vlogs = activeArticles.slice(0, 6); 
+        if (vlogs.length === 0) vlogs = activeArticles.slice(0, 6);
         if (vlogs.length > 0) vlogs.forEach((a, idx) => vlogsContainer.insertAdjacentHTML('beforeend', buildCard(a, idx)));
         else vlogsContainer.parentElement.style.display = 'none';
     }
@@ -696,7 +898,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const centerY = rect.height / 2;
             const percentX = (x - centerX) / centerX;
             const percentY = -((y - centerY) / centerY);
-            const maxRotate = window.innerWidth > 992 ? 8 : 2; 
+            const maxRotate = window.innerWidth > 992 ? 8 : 2;
 
             el.style.transform = `perspective(1000px) rotateY(${percentX * maxRotate}deg) rotateX(${percentY * maxRotate}deg) scale3d(1.02, 1.02, 1.02)`;
             el.style.transition = 'transform 0.1s ease-out';
@@ -733,87 +935,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     });
-
-    window.renderAdminList = (articles) => {
-        const adminList = document.getElementById('content-list');
-        if (!adminList) return;
-        adminList.innerHTML = '';
-        const allPosts = (articles || []).slice().sort((a, b) => {
-            const dA = new Date(a.date);
-            const dB = new Date(b.date);
-            if (!isNaN(dA) && !isNaN(dB)) return dB - dA;
-            return 0;
-        });
-        allPosts.forEach(article => {
-            const isArchived = article.archived === true;
-            const isUnlisted = article.unlisted === true;
-            const li = document.createElement('li');
-            li.className = 'admin-list-item' + (isArchived ? ' is-archived' : '') + (isUnlisted ? ' is-unlisted' : '');
-            li.dataset.articleId = article.id;
-            li.innerHTML = `
-                <div class="admin-item-thumb">
-                    <img src="${article.image || ''}" alt="thumb" onerror="this.style.display='none'">
-                </div>
-                <div class="admin-item-info">
-                    <div class="admin-item-title">${article.title}</div>
-                    <div class="admin-item-meta">
-                        ${isArchived ? '<span class="admin-badge badge-archived">Archived</span>' : isUnlisted ? '<span class="admin-badge" style="background:#8b5cf6;color:#fff;">Hidden</span>' : '<span class="admin-badge badge-active">Live</span>'}
-                        <span>${article.date}</span>
-                        <span style="text-transform:uppercase; font-size:0.75rem;">${article.category}</span>
-                        <span style="color: var(--primary-red); font-weight: 700;">👁️ ${article.views || 0} views</span>
-                    </div>
-                </div>
-                <div class="admin-item-actions">
-                    <button class="admin-action-btn edit-btn" ${isArchived ? 'disabled title="Restore to edit"' : ''}>✏️ Edit</button>
-                    <button class="admin-action-btn unlist-btn" style="${isUnlisted ? 'border-color:#8b5cf6;color:#8b5cf6;background:rgba(139,92,246,0.08);' : 'border-color:#64748b;color:#64748b;'}">${isUnlisted ? '👁️ Show' : '🙈 Hide'}</button>
-                    <button class="admin-action-btn archive-btn" style="${isArchived ? 'border-color:#10b981;color:#059669;' : 'border-color:#f59e0b;color:#d97706;'}">${isArchived ? '↩ Restore' : '📦 Archive'}</button>
-                    <button class="admin-action-btn delete-btn" style="border-color:#ef4444;color:#ef4444;">🗑️ Delete</button>
-                </div>
-            `;
-            adminList.insertAdjacentElement('beforeend', li);
-        });
-        const countEl = document.querySelector('.admin-section .hero-label');
-        if (countEl) {
-            const activeCount = articles.filter(a => !a.archived).length;
-            countEl.innerText = activeCount + " Active";
-        }
-        // Update analytics whenever list is modified
-        window.renderAnalytics(articles);
-    };
-
-    window.renderAnalytics = (articles) => {
-        const totalViewsEl = document.getElementById('stat-total-views');
-        if (!totalViewsEl) return;
-
-        const allArticles = articles || [];
-        const totalViews = allArticles.reduce((sum, a) => sum + (parseInt(a.views) || 0), 0);
-        const publishedCount = allArticles.filter(a => !a.archived).length;
-        const archivedCount = allArticles.filter(a => a.archived).length;
-        const visitCount = localStorage.getItem('asif_visits') || '0';
-
-        // Update basic stats
-        totalViewsEl.innerText = totalViews.toLocaleString();
-        document.getElementById('stat-visits').innerText = parseInt(visitCount).toLocaleString();
-        document.getElementById('stat-published').innerText = publishedCount;
-        document.getElementById('stat-archived-count').innerText = `${archivedCount} archived`;
-        
-        // Find top post
-        if (allArticles.length > 0) {
-            const topPost = [...allArticles].sort((a, b) => (parseInt(b.views) || 0) - (parseInt(a.views) || 0))[0];
-            document.getElementById('stat-top-post').innerText = topPost.title;
-            document.getElementById('stat-top-views').innerText = `${(topPost.views || 0).toLocaleString()} views`;
-        } else {
-            document.getElementById('stat-top-post').innerText = "None yet";
-            document.getElementById('stat-top-views').innerText = "0 views";
-        }
-
-        // Just a fancy random trend for visual flair (static trend otherwise)
-        const viewsTrend = document.getElementById('stat-views-trend');
-        if (viewsTrend) {
-            const trend = (totalViews / 10).toFixed(1);
-            viewsTrend.innerText = `↑ ${trend}% from last month`;
-        }
-    };
 
     if (document.getElementById('content-list')) {
         window.renderAdminList(window.globalArticles);
@@ -889,9 +1010,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const slug = generateSlug(title) || generateShortId();
                 const coverCaption = document.getElementById('cover-caption-input').value.trim();
                 const newArticle = { id: slug, title: title, category: category, content: contentBody, date: postDate, image: imgSrc, cover_caption: coverCaption, archived: false };
-                
+
                 const { data: insertedData, error } = sbClient ? await sbClient.from('articles').insert([newArticle]).select() : { error: { message: "Offline" } };
-                
+
                 if (error) {
                     alert("Supabase error: " + error.message);
                     btn.innerHTML = originalText;
@@ -899,10 +1020,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     btn.style.pointerEvents = 'auto';
                     return;
                 }
-                
+
                 btn.innerHTML = `✅ Published!`;
                 btn.style.background = '#10B981';
-                
+
                 // Immediately push to local state to prevent replication delay from hiding it
                 const finalArticle = (insertedData && insertedData.length > 0) ? insertedData[0] : newArticle;
                 window.globalArticles.push(finalArticle);
@@ -944,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const contentBody = contentEl ? (contentEl.tagName === 'DIV' ? contentEl.innerHTML : contentEl.value) : "";
             const selectCategory = document.getElementById('modal-category');
             let category = selectCategory.options[selectCategory.selectedIndex].text;
-            
+
             const postDateRaw = document.getElementById('modal-post-date').value;
             const formatDate = (val) => {
                 const d = val ? new Date(val) : new Date();
@@ -960,8 +1081,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let updateData = { title, category, date: postDate, content: contentBody, cover_caption: coverCaption };
                     if (imgSrc) updateData.image = imgSrc;
 
-                    const { error } = sbClient 
-                        ? await sbClient.from('articles').update(updateData).eq('id', editId) 
+                    const { error } = sbClient
+                        ? await sbClient.from('articles').update(updateData).eq('id', editId)
                         : { error: { message: "Offline" } };
 
                     if (error) throw error;
@@ -1008,7 +1129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (contentEl) contentEl.innerHTML = found.content || '';
                 document.getElementById('modal-edit-id').value = found.id;
                 document.getElementById('modal-cover-caption-input').value = found.cover_caption || '';
-                
+
                 // Populate Category
                 const catSelect = document.getElementById('modal-category');
                 if (catSelect) {
@@ -1041,17 +1162,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.innerText = '⏳...';
                 if (sbClient) {
                     sbClient.from('articles').update({ unlisted: newUnlisted }).eq('id', id)
-                    .then(({ error }) => {
-                        if (error) throw error;
-                        article.unlisted = newUnlisted;
-                        localStorage.setItem('crimson_db_cache_v2', JSON.stringify(window.globalArticles));
-                        window.renderAdminList(window.globalArticles);
-                    })
-                    .catch(err => {
-                        console.error("Unlist error:", err);
-                        alert("Failed to update visibility");
-                        window.renderAdminList(window.globalArticles);
-                    });
+                        .then(({ error }) => {
+                            if (error) throw error;
+                            article.unlisted = newUnlisted;
+                            localStorage.setItem('crimson_db_cache_v2', JSON.stringify(window.globalArticles));
+                            window.renderAdminList(window.globalArticles);
+                        })
+                        .catch(err => {
+                            console.error("Unlist error:", err);
+                            alert("Failed to update visibility");
+                            window.renderAdminList(window.globalArticles);
+                        });
                 }
             }
         }
@@ -1064,17 +1185,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.innerText = "⏳...";
                 if (sbClient) {
                     sbClient.from('articles').update({ archived: newArchived }).eq('id', id)
-                    .then(({ error }) => {
-                        if (error) throw error;
-                        article.archived = newArchived;
-                        localStorage.setItem('crimson_db_cache_v2', JSON.stringify(window.globalArticles));
-                        window.renderAdminList(window.globalArticles);
-                    })
-                    .catch(err => {
-                        console.error("Archive error:", err);
-                        alert("Failed to archive article");
-                        window.renderAdminList(window.globalArticles);
-                    });
+                        .then(({ error }) => {
+                            if (error) throw error;
+                            article.archived = newArchived;
+                            localStorage.setItem('crimson_db_cache_v2', JSON.stringify(window.globalArticles));
+                            window.renderAdminList(window.globalArticles);
+                        })
+                        .catch(err => {
+                            console.error("Archive error:", err);
+                            alert("Failed to archive article");
+                            window.renderAdminList(window.globalArticles);
+                        });
                 }
             }
         }
@@ -1083,213 +1204,228 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (confirm('Are you permanently deleting this article? This cannot be undone.')) {
                 if (sbClient) {
                     sbClient.from('articles').delete().eq('id', id)
-                    .then(({ error }) => {
-                        if (error) throw error;
-                        window.globalArticles = window.globalArticles.filter(a => a.id !== id);
-                        localStorage.setItem('crimson_db_cache_v2', JSON.stringify(window.globalArticles));
-                        window.renderAdminList(window.globalArticles);
-                    })
-                    .catch(err => {
-                        console.error("Delete error:", err);
-                        alert("Failed to delete article");
-                    });
+                        .then(({ error }) => {
+                            if (error) throw error;
+                            window.globalArticles = window.globalArticles.filter(a => a.id !== id);
+                            localStorage.setItem('crimson_db_cache_v2', JSON.stringify(window.globalArticles));
+                            window.renderAdminList(window.globalArticles);
+                        })
+                        .catch(err => {
+                            console.error("Delete error:", err);
+                            alert("Failed to delete article");
+                        });
                 }
             }
         }
     });
 
     // 10. Article Viewing Page Display logic
-    if (window.location.pathname.includes('article') || window.location.search.includes('id=')) {
-        const urlParams = new URLSearchParams(window.location.search);
-        let articleId = urlParams.get('id') || (window.location.pathname.includes('/article/') ? decodeURIComponent(window.location.pathname.split('/article/')[1].replace(/\/$/, '')) : null);
-        const articles = window.globalArticles;
-        const activeArticles = articles.filter(a => !a.archived && !a.unlisted);
+    window.renderSingleArticle = (foundArticle) => {
+        if (!foundArticle) return;
+        const isInitialRender = !foundArticle.renderDone;
+        foundArticle.renderDone = true;
 
-        // Auto-load latest article if no ID provided in URL
-        if (!articleId && activeArticles.length > 0) {
-            // Articles are pushed to globalArticles, latest is at the end or we can sort by date
-            // Usually they are in order of insertion if using Supabase without order by, 
-            // but the reverse() used in other places suggests latest is last.
-            const latest = activeArticles[activeArticles.length - 1];
-            articleId = latest.id;
-        }
+        if (isInitialRender) {
+            document.title = foundArticle.title + " - Asif Ansari";
 
-        if (articleId) {
-            const foundArticle = articles.find(a => a.id === articleId || generateSlug(a.title) === articleId);
+            // --- UPDATE BROWSER URL TO SEO URL ---
+            const cleanSlug = (generateSlug(foundArticle.title) || foundArticle.id);
+            const seoPath = '/article/' + cleanSlug;
+            const fullSeoUrl = 'https://blog.asifpmn.in' + seoPath;
 
-            if (foundArticle) {
-                document.title = foundArticle.title + " - Asif Ansari";
-                
-                // --- UPDATE BROWSER URL TO SEO URL ---
-                if (!isLocalEnv) {
-                    const seoPath = '/article/' + (generateSlug(foundArticle.title) || foundArticle.id);
-                    if (window.location.pathname !== seoPath) {
-                        window.history.replaceState(null, '', seoPath);
-                    }
+            if (!isLocalEnv) {
+                if (window.location.pathname !== seoPath) {
+                    window.history.replaceState(null, '', seoPath);
                 }
-                
-                // --- DYNAMIC SEO META FIX ---
-                const rawText = stripHtml(foundArticle.content ||"");
-                const snippet = rawText.length > 150 ? rawText.substring(0, 150) + '...' : rawText;
-                const dynamicUrl = window.location.origin + window.location.pathname + '?id=' + foundArticle.id;
-                
-                // Update Canonical Tag
-                let canonical = document.querySelector('link[rel="canonical"]');
-                if (canonical) canonical.setAttribute('href', dynamicUrl);
-                
-                // Update Standard Meta
-                const metaDesc = document.querySelector('meta[name="description"]');
-                if (metaDesc) metaDesc.setAttribute('content', snippet);
-                
-                // Update Open Graph (OG)
-                const ogTitle = document.querySelector('meta[property="og:title"]');
-                if (ogTitle) ogTitle.setAttribute('content', foundArticle.title);
-                const ogDesc = document.querySelector('meta[property="og:description"]');
-                if (ogDesc) ogDesc.setAttribute('content', snippet);
-                const ogImg = document.querySelector('meta[property="og:image"]');
-                if (ogImg && foundArticle.image) ogImg.setAttribute('content', foundArticle.image);
-                const ogUrl = document.querySelector('meta[property="og:url"]');
-                if (ogUrl) ogUrl.setAttribute('content', dynamicUrl);
-                // --- END SEO FIX ---
+            }
 
-                const titleEl = document.querySelector('.article-header h1');
-                if (titleEl) titleEl.innerText = foundArticle.title;
-                const bodyEl = document.querySelector('.article-body');
-                if (bodyEl) bodyEl.innerHTML = foundArticle.content;
-                const imgEl = document.querySelector('.article-hero-img');
-                if (imgEl && foundArticle.image) {
-                    imgEl.crossOrigin = "anonymous"; // Request CORS to allow canvas export
-                    imgEl.src = foundArticle.image;
+            // --- DYNAMIC SEO META FIX ---
+            const rawText = stripHtml(foundArticle.content || "");
+            const snippet = rawText.length > 150 ? rawText.substring(0, 150) + '...' : rawText;
+
+            // Update Canonical Tag
+            let canonical = document.querySelector('link[rel="canonical"]');
+            if (canonical) canonical.setAttribute('href', fullSeoUrl);
+
+            // Update Standard Meta
+            const metaDesc = document.querySelector('meta[name="description"]');
+            if (metaDesc) metaDesc.setAttribute('content', snippet);
+
+            // Update Open Graph (OG)
+            const ogTitle = document.querySelector('meta[property="og:title"]');
+            if (ogTitle) ogTitle.setAttribute('content', foundArticle.title);
+            const ogDesc = document.querySelector('meta[property="og:description"]');
+            if (ogDesc) ogDesc.setAttribute('content', snippet);
+            const ogImg = document.querySelector('meta[property="og:image"]');
+            if (ogImg && foundArticle.image) ogImg.setAttribute('content', foundArticle.image);
+
+            // --- JSON-LD Structured Data for Googlebot ---
+            let jsonLd = document.getElementById('article-json-ld');
+            if (!jsonLd) {
+                jsonLd = document.createElement('script');
+                jsonLd.id = 'article-json-ld';
+                jsonLd.type = 'application/ld+json';
+                document.head.appendChild(jsonLd);
+            }
+            const structuredData = {
+                "@context": "https://schema.org",
+                "@type": "BlogPosting",
+                "headline": foundArticle.title,
+                "image": [foundArticle.image],
+                "datePublished": foundArticle.date,
+                "author": [{
+                    "@type": "Person",
+                    "name": "Asif Ansari",
+                    "url": "https://asifpmn.in"
+                }],
+                "description": snippet,
+                "mainEntityOfPage": {
+                    "@type": "WebPage",
+                    "@id": fullSeoUrl
                 }
+            };
+            jsonLd.textContent = JSON.stringify(structuredData);
 
-                // Apply dynamic frontend watermark to all article images to protect them
-                setTimeout(() => {
-                    const addVisualWatermarkToImg = (img) => {
-                        if (!img || img.dataset.watermarked || img.parentElement.classList.contains('watermark-wrapper')) return;
-                        
-                        const processImg = () => {
-                            if (img.width < 150) return; // ignore small icons
-                            try {
-                                const canvas = document.createElement('canvas');
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                
-                                const watermarkText = 'Asif Ansari';
-                                const fontSize = Math.floor(Math.max(16, canvas.width * 0.04));
-                                ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-                                ctx.fillStyle = 'rgba(255, 255, 255, 0.25)'; // delicate transparency
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-                                ctx.shadowBlur = 4;
-                                
-                                ctx.translate(canvas.width / 2, canvas.height / 2);
-                                ctx.rotate(-Math.PI / 6); // -30 degrees
-                                
-                                const xSpacing = ctx.measureText(watermarkText).width + fontSize * 4;
-                                const ySpacing = fontSize * 4;
-                                const limit = Math.max(canvas.width, canvas.height) * 1.5;
-                                
-                                for (let y = -limit; y <= limit; y += ySpacing) {
-                                    const rowIndex = Math.round(y / ySpacing);
-                                    const offsetX = (Math.abs(rowIndex) % 2 === 1) ? xSpacing / 2 : 0;
-                                    for (let x = -limit; x <= limit; x += xSpacing) {
-                                        ctx.fillText(watermarkText, x + offsetX, y);
-                                    }
-                                }
-                                
+            const titleEl = document.getElementById('article-title');
+            if (titleEl) titleEl.innerText = foundArticle.title;
+            const bodyEl = document.getElementById('article-content');
+            if (bodyEl) bodyEl.innerHTML = foundArticle.content;
+
+            const imgEl = document.getElementById('main-article-img');
+            const imgSkeleton = document.getElementById('image-skeleton');
+            if (imgEl && foundArticle.image) {
+                imgEl.crossOrigin = "anonymous";
+                imgEl.onload = () => {
+                    imgEl.style.opacity = '1';
+                    if (imgSkeleton) imgSkeleton.style.display = 'none';
+                };
+                imgEl.src = foundArticle.image;
+            }
+
+            // Apply dynamic frontend watermark
+            setTimeout(() => {
+                const addVisualWatermarkToImg = (img) => {
+                    if (!img || img.dataset.watermarked || img.parentElement.classList.contains('watermark-wrapper')) return;
+                    const processImg = () => {
+                        if (img.width < 150) return;
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width; canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                            // Load Logo for Watermark
+                            const logo = new Image();
+                            logo.crossOrigin = "anonymous";
+                            logo.src = "/logo.png";
+                            logo.onload = () => {
+                                // Position: Top Right
+                                const logoSize = Math.floor(canvas.width * 0.15); // 15% of image width
+                                const padding = 20;
+                                const x = canvas.width - logoSize - padding;
+                                const y = padding;
+
+                                ctx.globalAlpha = 0.15; // Visibility of overlap
+                                ctx.drawImage(logo, x, y, logoSize, (logoSize * logo.height) / logo.width);
+                                ctx.globalAlpha = 1.0;
+
                                 canvas.toBlob((blob) => {
                                     const watermarkedUrl = URL.createObjectURL(blob);
-                                    
-                                    // Create wrapper to hold both images
                                     const wrapper = document.createElement('div');
                                     wrapper.className = 'watermark-wrapper';
-                                    wrapper.style.position = 'relative';
-                                    wrapper.style.display = 'inline-block';
-                                    wrapper.style.width = '100%';
+                                    wrapper.setAttribute('style', 'position:relative; display:inline-block; width:100%; overflow:hidden;');
+
                                     img.parentNode.insertBefore(wrapper, img);
 
-                                    // Create hidden downloadable image with watermark
-                                    const downloadableImg = new Image();
-                                    downloadableImg.src = watermarkedUrl;
-                                    downloadableImg.style.width = '100%';
-                                    downloadableImg.style.height = '100%';
-                                    downloadableImg.style.objectFit = 'cover';
-                                    downloadableImg.style.display = 'block';
+                                    const watermarkedOverlay = new Image();
+                                    watermarkedOverlay.src = watermarkedUrl;
+                                    watermarkedOverlay.setAttribute('style', 'position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; opacity:0.1; z-index:10;');
 
-                                    // Make the original visible image transparent to clicks so right-click goes through it
-                                    img.style.position = 'absolute';
-                                    img.style.top = '0';
-                                    img.style.left = '0';
-                                    img.style.width = '100%';
-                                    img.style.height = '100%';
+                                    img.style.position = 'relative';
+                                    img.style.zIndex = '1';
                                     img.style.pointerEvents = 'none';
-                                    img.style.zIndex = '5';
 
-                                    wrapper.appendChild(downloadableImg);
                                     wrapper.appendChild(img);
+                                    wrapper.appendChild(watermarkedOverlay);
                                     img.dataset.watermarked = 'true';
                                 }, 'image/webp', 0.85);
-                            } catch(e) {
-                                // CORS Blocked - fallback to disable download natively
+                            };
+                            logo.onerror = () => {
+                                // Fallback to text if logo fails
+                                ctx.font = '24px Inter';
+                                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                                ctx.fillText('Asif Ansari', 20, 40);
                                 img.dataset.watermarked = 'true';
-                                img.addEventListener('contextmenu', e => e.preventDefault());
-                            }
-                        };
-                        
-                        // Set crossOrigin flag if not already set, so canvas export has a chance to work
-                        if (!img.crossOrigin) { img.crossOrigin = "anonymous"; }
-                        
-                        if (img.complete) processImg();
-                        else img.addEventListener('load', processImg, {once: true});
+                            };
+                        } catch (e) { img.dataset.watermarked = 'true'; img.addEventListener('contextmenu', e => e.preventDefault()); }
                     };
+                    if (!img.crossOrigin) { img.crossOrigin = "anonymous"; }
+                    if (img.complete) processImg();
+                    else img.addEventListener('load', processImg, { once: true });
+                };
+                if (imgEl) addVisualWatermarkToImg(imgEl);
+                if (bodyEl) bodyEl.querySelectorAll('img').forEach(addVisualWatermarkToImg);
+                // Apply to Homepage Hero Slides
+                document.querySelectorAll('.hero-image-wrapper img').forEach(addVisualWatermarkToImg);
+            }, 300);
 
-                    if (imgEl) addVisualWatermarkToImg(imgEl);
-                    if (bodyEl) bodyEl.querySelectorAll('img').forEach(addVisualWatermarkToImg);
-                }, 300);
-
-                // Update category and meta if elements exist
-                const catEl = document.querySelector('.article-header .hero-label');
-                if (catEl) catEl.innerText = foundArticle.category;
-                
-                const metaEl = document.querySelector('.article-meta-large');
-                if (metaEl) {
-                    metaEl.innerHTML = `
-                        <span>By Authorized Admin</span>
-                        <span>${foundArticle.date}</span>
-                        <span>5 min read</span>
-                    `;
-                }
-
-                // Increment View Count (Dynamic Analytics)
-                if (sbClient) {
-                    const newViews = (parseInt(foundArticle.views) || 0) + 1;
-                    sbClient.from('articles').update({ views: newViews }).eq('id', foundArticle.id).then(() => {
-                        foundArticle.views = newViews;
-                    }).catch(e => console.warn("View tracker failed"));
-                }
-
-                const moreContainer = document.getElementById('more-articles-container');
-                if (moreContainer) {
-                    const others = activeArticles.filter(a => a.id !== foundArticle.id).reverse().slice(0, 3);
-                    let nextHTML = "";
-                    others.forEach(a => {
-                        const slug = generateSlug(a.title) || a.id;
-                        nextHTML += `
-                            <a href="${getArticleLink(slug)}" class="article-card">
-                                <div class="article-card-image"><img src="${a.image}" alt=""></div>
-                                <div class="article-card-content"><h3>${a.title}</h3></div>
-                            </a>
-                        `;
-                    });
-                    moreContainer.innerHTML = nextHTML;
-                }
-            } else {
-                window.location.replace(getSafeLink('404'));
+            const catEl = document.getElementById('article-category-label');
+            if (catEl) {
+                catEl.innerText = foundArticle.category;
+                catEl.classList.remove('skeleton-text');
+                catEl.style.background = '';
             }
+
+            const metaEl = document.getElementById('article-meta');
+            if (metaEl) {
+                metaEl.innerHTML = `
+                <span>By Authorized Admin</span>
+                <span>${foundArticle.date}</span>
+                <span>5 min read</span>
+            `;
+            }
+
+            const moreContainer = document.getElementById('more-articles-container');
+            if (moreContainer) {
+                const activeArticles = (window.globalArticles || []).filter(a => !a.archived && !a.unlisted);
+                const others = activeArticles.filter(a => a.id !== foundArticle.id).reverse().slice(0, 3);
+                let nextHTML = "";
+                others.forEach(a => {
+                    const slug = generateSlug(a.title) || a.id;
+                    nextHTML += `
+                    <a href="${getArticleLink(slug)}" class="article-card">
+                        <div class="article-card-image"><img src="${a.image}" alt=""></div>
+                        <div class="article-card-content"><h3>${a.title}</h3></div>
+                    </a>
+                `;
+                });
+                moreContainer.innerHTML = nextHTML;
+            }
+
+            // Finalize preloader if it was waiting for article render
+            if (window.articleRenderPromiseResolve) window.articleRenderPromiseResolve();
         }
+    };
+
+    if (isArticlePage) {
+        const urlParams = new URLSearchParams(window.location.search);
+        let articleId = urlParams.get('id') || (window.location.pathname.includes('/article/') ? decodeURIComponent(window.location.pathname.split('/article/')[1].replace(/\/$/, '')) : null);
+
+        const tryInitialRender = () => {
+            const articles = window.globalArticles;
+            let foundArticle = articles.find(a => a.id === articleId || generateSlug(a.title) === articleId);
+
+            if (!foundArticle && !articleId && articles.filter(a => !a.archived && !a.unlisted).length > 0) {
+                const active = articles.filter(a => !a.archived && !a.unlisted);
+                foundArticle = active[active.length - 1];
+            }
+
+            if (foundArticle) {
+                window.renderSingleArticle(foundArticle);
+            }
+        };
+
+        tryInitialRender();
     }
 
     // 12. Theme Switcher Logic

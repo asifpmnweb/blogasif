@@ -207,6 +207,34 @@
                         <div class="stat-value" style="font-size: 1.2rem; line-height: 1.3;" id="stat-top-post">—</div>
                         <div class="stat-trend trend-up" id="stat-top-views">0 views</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-title">⏳ Avg. Reading Time</div>
+                        <div class="stat-value" id="stat-avg-read">—</div>
+                        <div class="stat-trend trend-up">minutes per post</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🏆 Top Category</div>
+                        <div class="stat-value" id="stat-top-category">—</div>
+                        <div class="stat-trend trend-up" id="stat-cat-popularity">...</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🎯 Content Impact</div>
+                        <div class="stat-value" id="stat-impact-score">—</div>
+                        <div class="stat-trend trend-up">Engagement Score</div>
+                    </div>
+                </div>
+
+                <!-- Cache Management -->
+                <div style="margin-top: 2rem; background: var(--light-bg); border-radius: 20px; padding: 1.75rem; border: 1px solid var(--border-color);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <div style="font-weight: 700; font-size: 1rem; color: var(--text-dark); margin-bottom: 0.3rem;">🗄️ Local Cache</div>
+                            <div id="cache-status" style="font-size: 0.85rem; color: var(--text-light);">Checking cache...</div>
+                        </div>
+                        <button id="clear-cache-btn" onclick="clearSiteCache()" class="btn btn-outline" style="padding: 0.6rem 1.4rem; font-size: 0.9rem; border-color: #ef4444; color: #ef4444; white-space: nowrap;">
+                            🧹 Clear Cache
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -257,27 +285,56 @@
                     <div class="form-group">
                         <label for="content">Content Body</label>
                         <div class="editor-toolbar">
-                            <button type="button" class="editor-btn" onclick="formatDoc('bold')"><b>B</b></button>
-                            <button type="button" class="editor-btn" onclick="formatDoc('italic')"><i>I</i></button>
-                            <button type="button" class="editor-btn" onclick="formatDoc('underline')"><u>U</u></button>
-                            <button type="button" class="editor-btn" onclick="formatDoc('createLink', prompt('Paste URL here:'))">🔗 Link</button>
+                            <!-- Basic Formatting -->
+                            <button type="button" class="editor-btn" onclick="formatDoc('undo')" title="Undo">↩</button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('redo')" title="Redo">↪</button>
                             <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
-                            <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;">
+                            
+                            <!-- Headings -->
+                            <select onchange="formatDoc('formatBlock', this.value); this.selectedIndex=0;" class="editor-btn" style="width: auto; padding: 0 10px;">
+                                <option value="">Text Style</option>
+                                <option value="H1">Heading 1</option>
+                                <option value="H2">Heading 2</option>
+                                <option value="H3">Heading 3</option>
+                                <option value="P">Paragraph</option>
+                            </select>
+                            <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+
+                            <button type="button" class="editor-btn" onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
+                            <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+
+                            <!-- Alignment -->
+                            <button type="button" class="editor-btn" onclick="formatDoc('justifyLeft')" title="Align Left">Align L</button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('justifyCenter')" title="Align Center">Align C</button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('justifyRight')" title="Align Right">Align R</button>
+                            <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+
+                            <!-- Color -->
+                            <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;" title="Text Color">
                                 <span style="font-size: 0.75rem;">Text</span>
                                 <input type="color" onchange="formatDoc('foreColor', this.value)" style="width: 20px; height: 20px; border: none; cursor: pointer; background: transparent;">
                             </div>
-                            <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;">
+                            <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;" title="Highlight Color">
                                 <span style="font-size: 0.75rem;">Bg</span>
                                 <input type="color" onchange="formatDoc('hiliteColor', this.value)" style="width: 20px; height: 20px; border: none; cursor: pointer; background: transparent;">
                             </div>
                             <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
-                            <button type="button" class="editor-btn" onclick="formatDoc('insertUnorderedList')">&bull; List</button>
-                            <button type="button" class="editor-btn" id="btn-insert-image" title="Insert Image into Story" style="color: var(--primary-red); font-weight: 800;">🖼️ Add Image</button>
-                            <input type="file" id="body-image-upload" accept="image/*" style="display: none;">
+
+                            <!-- Lists & Links -->
+                            <button type="button" class="editor-btn" onclick="formatDoc('insertUnorderedList')" title="Bullet List">&bull; List</button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('insertOrderedList')" title="Numbered List">1. List</button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('insertHorizontalRule')" title="Divider">— Sep</button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('createLink', prompt('Paste URL here:'))">🔗 Link</button>
                             <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
-                            <button type="button" class="editor-btn image-resize-btn" onclick="resizeActiveImage('100%')" title="Full Width">100%</button>
-                            <button type="button" class="editor-btn image-resize-btn" onclick="resizeActiveImage('50%')" title="Half Width">50%</button>
+
+                            <!-- Media & Tables -->
+                            <button type="button" class="editor-btn" id="btn-insert-image" title="Insert Image into Story" style="color: var(--primary-red); font-weight: 800;">🖼️ Image</button>
+                            <input type="file" id="body-image-upload" accept="image/*" style="display: none;">
+                            <button type="button" class="editor-btn" onclick="insertTable()" title="Insert Table" style="color: #0f172a; font-weight: 700;">📊 Table</button>
                             <button type="button" class="editor-btn" onclick="addCaptionToImage()" title="Add Caption" style="color: var(--primary-red); font-weight: 700;">💬 Caption</button>
+                            <button type="button" class="editor-btn" onclick="formatDoc('removeFormat')" title="Clear Formatting">✖ Clear</button>
                         </div>
                         <div id="content" class="rich-editor" contenteditable="true" placeholder="Start drafting your masterpiece..."></div>
                     </div>
@@ -400,27 +457,38 @@
                 <div class="form-group">
                     <label for="modal-content-body">Content Body</label>
                     <div class="editor-toolbar">
-                        <button type="button" class="editor-btn" onclick="formatDoc('bold')"><b>B</b></button>
-                        <button type="button" class="editor-btn" onclick="formatDoc('italic')"><i>I</i></button>
-                        <button type="button" class="editor-btn" onclick="formatDoc('underline')"><u>U</u></button>
-                        <button type="button" class="editor-btn" onclick="formatDoc('createLink', prompt('Paste URL here:'))">🔗 Link</button>
+                        <!-- Basic Formatting -->
+                        <button type="button" class="editor-btn" onclick="formatDoc('undo')" title="Undo">↩</button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('redo')" title="Redo">↪</button>
                         <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
-                        <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;">
-                            <span style="font-size: 0.75rem;">Text</span>
-                            <input type="color" onchange="formatDoc('foreColor', this.value)" style="width: 20px; height: 20px; border: none; cursor: pointer; background: transparent;">
-                        </div>
-                        <div class="editor-btn" style="display: flex; align-items: center; gap: 5px; padding: 0 8px;">
-                            <span style="font-size: 0.75rem;">Bg</span>
-                            <input type="color" onchange="formatDoc('hiliteColor', this.value)" style="width: 20px; height: 20px; border: none; cursor: pointer; background: transparent;">
-                        </div>
+                        
+                        <select onchange="formatDoc('formatBlock', this.value); this.selectedIndex=0;" class="editor-btn" style="width: auto;">
+                            <option value="">Text Style</option>
+                            <option value="H1">Heading 1</option>
+                            <option value="H2">Heading 2</option>
+                            <option value="H3">Heading 3</option>
+                            <option value="P">Paragraph</option>
+                        </select>
                         <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
-                        <button type="button" class="editor-btn" onclick="formatDoc('insertUnorderedList')">&bull; List</button>
-                        <button type="button" class="editor-btn" id="modal-btn-insert-image" title="Insert Image into Story" style="color: var(--primary-red); font-weight: 800;">🖼️ Add Image</button>
+
+                        <button type="button" class="editor-btn" onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
+                        <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+
+                        <button type="button" class="editor-btn" onclick="formatDoc('justifyLeft')" title="Align Left">L</button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('justifyCenter')" title="Align Center">C</button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('justifyRight')" title="Align Right">R</button>
+                        <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+
+                        <button type="button" class="editor-btn" onclick="formatDoc('insertUnorderedList')" title="Bullet List">&bull;</button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('insertOrderedList')" title="Numbered List">1.</button>
+                        <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+
+                        <button type="button" class="editor-btn" id="modal-btn-insert-image" title="Insert Image" style="color: var(--primary-red);">🖼️</button>
                         <input type="file" id="modal-body-image-upload" accept="image/*" style="display: none;">
-                        <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
-                        <button type="button" class="editor-btn image-resize-btn" onclick="resizeActiveImage('100%')" title="Full Width">100%</button>
-                        <button type="button" class="editor-btn image-resize-btn" onclick="resizeActiveImage('50%')" title="Half Width">50%</button>
-                        <button type="button" class="editor-btn" onclick="addCaptionToImage()" title="Add Caption" style="color: var(--primary-red); font-weight: 700;">💬 Caption</button>
+                        <button type="button" class="editor-btn" onclick="insertTable()" title="Insert Table">📊 Table</button>
+                        <button type="button" class="editor-btn" onclick="formatDoc('removeFormat')" title="Clear Formatting">✖ Clear</button>
                     </div>
                     <div id="modal-content-body" class="rich-editor" contenteditable="true" style="min-height: 200px;"></div>
                 </div>
@@ -480,6 +548,46 @@
                 if (item.getAttribute('data-section') === targetId) item.classList.add('active');
             });
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Cache status display
+        function updateCacheStatus() {
+            const statusEl = document.getElementById('cache-status');
+            if (!statusEl) return;
+            const cacheKeys = ['crimson_db_cache_v2', 'crimson_articles', 'crimson_theme', 'asif_visits'];
+            let totalBytes = 0;
+            let found = [];
+            cacheKeys.forEach(key => {
+                const val = localStorage.getItem(key);
+                if (val) {
+                    totalBytes += val.length * 2; // UTF-16
+                    found.push(key.replace('crimson_', '').replace('asif_', ''));
+                }
+            });
+            if (found.length === 0) {
+                statusEl.textContent = 'No cache found — all data loads fresh from the server.';
+            } else {
+                const kb = (totalBytes / 1024).toFixed(1);
+                statusEl.textContent = `${kb} KB cached (${found.join(', ')})`;
+            }
+        }
+        updateCacheStatus();
+
+        // Clear all site cache keys from localStorage
+        window.clearSiteCache = function() {
+            const btn = document.getElementById('clear-cache-btn');
+            const cacheKeys = ['crimson_db_cache_v2', 'crimson_articles', 'asif_visits', 'asif_preloader_seen'];
+            cacheKeys.forEach(key => localStorage.removeItem(key));
+            sessionStorage.removeItem('asif_visited');
+
+            btn.innerHTML = '✅ Cleared!';
+            btn.style.background = '#10b981';
+            btn.style.color = '#fff';
+            btn.style.borderColor = '#10b981';
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 800);
         };
     </script>
 </body>

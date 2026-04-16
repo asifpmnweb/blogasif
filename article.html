@@ -41,7 +41,6 @@
             background: var(--primary-red);
             color: var(--pure-white);
             backdrop-filter: none;
-            box-shadow: var(--shadow-sm);
             border: none;
             font-weight: 800;
         }
@@ -69,34 +68,33 @@
     <main>
         <article class="reveal">
             <header class="article-header reveal">
-                <span class="hero-label glass-effect">Technology</span>
-                <h1 style="font-size: 3.5rem; font-weight: 900; margin: 1.5rem 0; letter-spacing: -1px; line-height: 1.2;">The Evolution of Digital Interfaces: Why Minimalism Wins</h1>
-                <div class="article-meta-large">
-                    <span>By Authorized Admin</span>
-                    <span>May 14, 2026</span>
-                    <span>5 min read</span>
+                <span id="article-category-label" class="hero-label glass-effect skeleton-text" style="width: 120px; height: 24px;"></span>
+                <h1 id="article-title" style="font-size: 3.5rem; font-weight: 900; margin: 1.5rem 0; letter-spacing: -1px; line-height: 1.2; display: flex; flex-direction: column; gap: 10px;">
+                    <div class="skeleton-text" style="width: 85%; height: 50px;"></div>
+                    <div class="skeleton-text" style="width: 60%; height: 50px;"></div>
+                </h1>
+                <div class="article-meta-large" id="article-meta">
+                    <span class="skeleton-text" style="width: 100px; height: 18px;"></span>
+                    <span class="skeleton-text" style="width: 120px; height: 18px;"></span>
+                    <span class="skeleton-text" style="width: 80px; height: 18px;"></span>
                 </div>
                 <div id="share-tools-placeholder"></div>
-                <div class="article-hero-wrapper" style="overflow: hidden; border-radius: 24px; margin-bottom: 3rem; position: relative;">
-                    <img src="https://updowninteractive.com/media/article-fallback.jpg" alt="Cover Image" class="article-hero-img" style="transform: scale(1.1); transition: transform 0.5s ease-out;">
+                <div class="article-hero-wrapper" style="overflow: hidden; border-radius: 24px; margin-bottom: 3rem; position: relative; background: #eee; min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Cover Image" class="article-hero-img" id="main-article-img" style="opacity: 0; position: absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;">
+                    <div id="image-skeleton" class="skeleton-loader" style="width: 100%; height: 100%; position: absolute; inset: 0;"></div>
                 </div>
                 <p class="img-caption" id="cover-caption"></p>
             </header>
 
-            <div class="article-body">
-                <p>In the modern digital landscape, the phrase "less is more" has never been more relevant. As users are continuously bombarded with information, interfaces that prioritize simplicity, bold typography, and extreme functionality are capturing widespread attention.</p>
+            <div class="article-body" id="article-content" style="min-height: 400px;">
+                <div class="skeleton-text" style="width: 100%; height: 18px; margin-bottom: 1.2rem;"></div>
+                <div class="skeleton-text" style="width: 100%; height: 18px; margin-bottom: 1.2rem;"></div>
+                <div class="skeleton-text" style="width: 95%; height: 18px; margin-bottom: 2rem;"></div>
                 
-                <h2>The Power of Contrast</h2>
-                <p>When you combine a stark white canvas with incredibly vibrant, energetic colors—like a deep crimson red—you guide the user's eye naturally. The red isn't just an accent; it becomes a tool for navigation, hierarchy, and emotion.</p>
-
-                <blockquote style="border-left: 4px solid var(--primary-red); padding-left: 1.5rem; margin: 2rem 0; font-size: 1.4rem; font-style: italic; color: var(--text-light);">
-                    "Good design is obvious. Great design is transparent. But premium design is unforgettable."
-                </blockquote>
-
-                <p>By stripping away unnecessary borders, shadows, and boxes, we rely on the core elements: typography and space. The interplay between an 800 font-weight Inter headline and a generous 1.8 line-height paragraph isn't just readable; it's a deeply satisfying visual experience.</p>
-                
-                <h2>Building for the Future</h2>
-                <p>As we design the next generation of digital products, focusing on these fundamental visual principles will be critical. It's not about adding features; it's about refining the ones that matter.</p>
+                <div class="skeleton-text" style="width: 40%; height: 32px; margin-bottom: 1.5rem;"></div>
+                <div class="skeleton-text" style="width: 100%; height: 18px; margin-bottom: 1.2rem;"></div>
+                <div class="skeleton-text" style="width: 100%; height: 18px; margin-bottom: 1.2rem;"></div>
+                <div class="skeleton-text" style="width: 85%; height: 18px; margin-bottom: 1.2rem;"></div>
             </div>
         </article>
 
