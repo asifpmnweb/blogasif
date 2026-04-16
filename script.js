@@ -411,10 +411,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error("API not ok");
             }
         } catch (e) {
-            console.error('Initial API fetch failed, trying direct Supabase:', e);
+            console.error('API fetch failed, trying direct Supabase:', e);
             if (sbClient) {
                 try {
-                if (backup) window.globalArticles = JSON.parse(backup);
+                    const { data } = await sbClient.from('articles').select('*').order('date', { ascending: false });
+                    if (data && data.length > 0) {
+                        window.globalArticles = data;
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                        if (typeof window.renderArticles === 'function') window.renderArticles();
+                        if (typeof window.renderAdminList === 'function' && isDashboard) window.renderAdminList(data);
+                    }
+                } catch (err) { console.error("Direct Supabase fallback failed:", err); }
             }
         }
     }
