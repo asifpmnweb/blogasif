@@ -1,0 +1,16 @@
+{
+  "name": "asif-ansari-blog",
+  "version": "1.0.0",
+  "description": "Premium Digital Blog",
+  "main": "index.html",
+  "scripts": {
+    "start": "servor ./ 8080 --browse",
+    "build": "echo 'Building premium assets...' && node refactor.js"
+  },
+  "devDependencies": {
+    "servor": "^4.0.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
