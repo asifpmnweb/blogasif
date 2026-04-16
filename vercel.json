@@ -23,7 +23,15 @@
         },
         {
             "source": "/article/:slug",
-            "destination": "/article"
+            "destination": "/article.html"
+        },
+        {
+            "source": "/admin",
+            "destination": "/admin.html"
+        },
+        {
+            "source": "/upload",
+            "destination": "/admin.html"
         },
         {
             "source": "/sitemap.xml",
