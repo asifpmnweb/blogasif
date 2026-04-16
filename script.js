@@ -5,7 +5,10 @@ window.finalizePreloader = () => {
     texts.forEach(t => t.classList.add('glitch-stop'));
     document.body.classList.add('loaded');
     setTimeout(() => {
-        if (preloader) preloader.style.display = 'none';
+        if (preloader) {
+            preloader.classList.add('hide'); // Added for CSS transitions
+            setTimeout(() => preloader.remove(), 1000);
+        }
         document.querySelectorAll('.reveal').forEach(el => {
             const rect = el.getBoundingClientRect();
             if (rect.top < window.innerHeight) el.classList.add('visible');
@@ -43,7 +46,7 @@ const getSafeLink = (path) => {
 };
 
 const getArticleLink = (identifier) => {
-    return isLocalEnv ? `${getSafeLink('article')}?id=${identifier}` : `/article/${identifier}`;
+    return `/article?id=${identifier}`;
 };
 
 // Dynamic Theme Engine
@@ -308,8 +311,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.finalizePreloader(); // Fallback if no preloader element
     }
 
-    // Safety fallback: Always kill preloader after 8 seconds no matter what
-    setTimeout(window.finalizePreloader, 8000);
+    // Safety fallback: Always kill preloader after 2 seconds as requested
+    setTimeout(() => {
+        if (typeof window.finalizePreloader === 'function') window.finalizePreloader();
+        else document.getElementById("preloader")?.remove();
+    }, 2000);
 
     // Track site visits (unique per browser session)
     const visitCount = parseInt(localStorage.getItem('asif_visits') || '0') + 1;

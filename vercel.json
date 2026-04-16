@@ -1,28 +1,8 @@
 {
-    "outputDirectory": ".",
     "cleanUrls": true,
-    "redirects": [
-        {
-            "source": "/upload",
-            "destination": "/admin",
-            "permanent": false
-        }
-    ],
     "rewrites": [
         {
-            "source": "/article/styles.css",
-            "destination": "/styles.css"
-        },
-        {
-            "source": "/article/script.js",
-            "destination": "/script.js"
-        },
-        {
-            "source": "/article/logo.png",
-            "destination": "/logo.png"
-        },
-        {
-            "source": "/article/:slug",
+            "source": "/article",
             "destination": "/article.html"
         },
         {
