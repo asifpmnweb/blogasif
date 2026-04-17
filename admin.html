@@ -128,6 +128,42 @@
             .admin-main-content { margin-left: 80px; }
         }
     </style>
+    <script>
+        // Hyper-Resilient Universal Path Fixer
+        (function() {
+            if (window.location.protocol !== 'file:') return;
+            const fix = (el) => {
+                ['href', 'src'].forEach(attr => {
+                    let val = el.getAttribute ? el.getAttribute(attr) : null;
+                    if (val && val.startsWith('/')) {
+                        let filename = val.split('/').pop();
+                        if (val === '/') filename = 'index.html';
+                        else if (val === '/article') filename = 'article.html';
+                        else if (val === '/admin') filename = 'admin.html';
+                        else if (filename && !filename.includes('.')) filename += '.html';
+                        el.setAttribute(attr, filename || 'index.html');
+                    }
+                });
+            };
+            document.querySelectorAll('[href^="/"], [src^="/"]').forEach(fix);
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(m => m.addedNodes.forEach(node => {
+                    if (node.nodeType === 1) {
+                        if (node.matches('[href^="/"], [src^="/"]')) fix(node);
+                        node.querySelectorAll('[href^="/"], [src^="/"]').forEach(fix);
+                    }
+                }));
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+        })();
+    </script>
+    <script>
+        // INSTANT-UNLOCK: Hide login screen immediately if already authorized
+        if (sessionStorage.getItem('crimson_admin_auth') === 'true') {
+            document.write('<style>#admin-login-screen { display: none !important; } .admin-authorized .admin-login-overlay { display: none !important; }</style>');
+            document.documentElement.classList.add('admin-authorized');
+        }
+    </script>
 </head>
 <body class="anim-body">
     <!-- Admin Login Screen -->
@@ -137,18 +173,18 @@
                 <span style="color:var(--primary-red);">Asif</span> <span>Ansari.</span>
             </h2>
             <p>Admin Authentication Required</p>
-            <form id="admin-login-form">
+            <div id="admin-login-form">
                 <div class="form-group" style="text-align: left;">
                     <label for="admin-username">Username</label>
-                    <input type="text" id="admin-username" class="form-control" required>
+                    <input type="text" id="admin-username" class="form-control">
                 </div>
                 <div class="form-group" style="text-align: left;">
                     <label for="admin-password">Password</label>
-                    <input type="password" id="admin-password" class="form-control" required>
+                    <input type="password" id="admin-password" class="form-control">
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Unlock Dashboard</button>
+                <button type="button" id="admin-login-btn" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">Unlock Dashboard</button>
                 <div id="login-error" class="login-error">Incorrect Credentials</div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -232,7 +268,7 @@
                             <div id="cache-status" style="font-size: 0.85rem; color: var(--text-light);">Checking cache...</div>
                         </div>
                         <button id="clear-cache-btn" onclick="clearSiteCache()" class="btn btn-outline" style="padding: 0.6rem 1.4rem; font-size: 0.9rem; border-color: #ef4444; color: #ef4444; white-space: nowrap;">
-                            🧹 Clear Cache
+                            Sweep Cache
                         </button>
                     </div>
                 </div>
@@ -252,7 +288,7 @@
 
                     <div class="form-group">
                         <label for="category">Category</label>
-                        <select id="category" class="form-control" required style="cursor: pointer; appearance: none;">
+                        <select id="category" class="form-control" required style="cursor: pointer;">
                             <option value="">Select a domain</option>
                             <option value="technology">Technology</option>
                             <option value="vlog">Vlogs & Video</option>
@@ -263,7 +299,9 @@
                             <option value="health">Health & Wellness</option>
                             <option value="personal">Personal</option>
                             <option value="photography">Photography</option>
+                            <option value="custom" style="font-weight: bold; color: var(--primary-red);">+ Add Custom Category</option>
                         </select>
+                        <input type="text" id="custom-category" class="form-control" placeholder="Enter custom category name..." style="display: none; margin-top: 10px; border-color: var(--primary-red);">
                     </div>
 
                     <div class="form-group">
@@ -332,12 +370,24 @@
                             <!-- Media & Tables -->
                             <button type="button" class="editor-btn" id="btn-insert-image" title="Insert Image into Story" style="color: var(--primary-red); font-weight: 800;">🖼️ Image</button>
                             <input type="file" id="body-image-upload" accept="image/*" style="display: none;">
+                            
+                            <!-- Image Size Tool -->
+                            <select onchange="window.resizeActiveImage(this.value); this.selectedIndex=0;" class="editor-btn" style="width: auto; padding: 0 10px; font-weight: 600; color: #475569;" title="Change Selected Image Size">
+                                <option value="">📏 Size</option>
+                                <option value="25%">25% (Small)</option>
+                                <option value="50%">50% (Med)</option>
+                                <option value="75%">75% (Large)</option>
+                                <option value="100%">100% (Full)</option>
+                            </select>
+                            <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+
                             <button type="button" class="editor-btn" onclick="insertTable()" title="Insert Table" style="color: #0f172a; font-weight: 700;">📊 Table</button>
                             <button type="button" class="editor-btn" onclick="addCaptionToImage()" title="Add Caption" style="color: var(--primary-red); font-weight: 700;">💬 Caption</button>
                             <button type="button" class="editor-btn" onclick="formatDoc('removeFormat')" title="Clear Formatting">✖ Clear</button>
                         </div>
                         <div id="content" class="rich-editor" contenteditable="true" placeholder="Start drafting your masterpiece..."></div>
                     </div>
+
 
                     <div style="text-align: right; margin-top: 2rem;">
                         <button type="submit" class="btn btn-primary">Publish to Live Site</button>
@@ -427,7 +477,7 @@
 
                 <div class="form-group">
                     <label for="modal-category">Category</label>
-                    <select id="modal-category" class="form-control" required style="cursor: pointer; appearance: none;">
+                    <select id="modal-category" class="form-control" required style="cursor: pointer;">
                         <option value="technology">Technology</option>
                         <option value="vlog">Vlogs & Video</option>
                         <option value="lifestyle">Lifestyle</option>
@@ -437,7 +487,9 @@
                         <option value="health">Health & Wellness</option>
                         <option value="personal">Personal</option>
                         <option value="photography">Photography</option>
+                        <option value="custom" style="font-weight: bold; color: var(--primary-red);">+ Add Custom Category</option>
                     </select>
+                    <input type="text" id="modal-custom-category" class="form-control" placeholder="Enter custom category name..." style="display: none; margin-top: 10px; border-color: var(--primary-red);">
                 </div>
 
                 <div class="form-group">
@@ -487,11 +539,23 @@
 
                         <button type="button" class="editor-btn" id="modal-btn-insert-image" title="Insert Image" style="color: var(--primary-red);">🖼️</button>
                         <input type="file" id="modal-body-image-upload" accept="image/*" style="display: none;">
+                        
+                        <!-- Image Size Tool -->
+                        <select onchange="window.resizeActiveImage(this.value); this.selectedIndex=0;" class="editor-btn" style="width: auto; padding: 0 5px;" title="Resize Image">
+                            <option value="">📏 Size</option>
+                            <option value="25%">25%</option>
+                            <option value="50%">50%</option>
+                            <option value="75%">75%</option>
+                            <option value="100%">100%</option>
+                        </select>
+                        <span style="width: 1px; background: var(--border-color); margin: 0 0.5rem;"></span>
+
                         <button type="button" class="editor-btn" onclick="insertTable()" title="Insert Table">📊 Table</button>
                         <button type="button" class="editor-btn" onclick="formatDoc('removeFormat')" title="Clear Formatting">✖ Clear</button>
                     </div>
                     <div id="modal-content-body" class="rich-editor" contenteditable="true" style="min-height: 200px;"></div>
                 </div>
+
 
                 <div style="text-align: right; margin-top: 2rem;">
                     <button type="button" class="btn btn-outline" id="cancel-modal" style="margin-right: 1rem;">Cancel</button>
@@ -505,89 +569,71 @@
         <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem;">
             <span style="color: var(--primary-red);">UPDOWN</span> <span>INTERACTIVE.</span>
         </h2>
+        <p>&copy; 2026 UPDOWN Interactive. All rights reserved.</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/script.js"></script>
     <script>
-        // Sidebar Navigation Logic
-        const sidebarItems = document.querySelectorAll('.sidebar-item');
-        const adminSections = document.querySelectorAll('.admin-section');
+        // FAIL-SAFE AUTH (Independent of external script.js)
+        (function() {
+            const initLogin = () => {
+                const btn = document.getElementById('admin-login-btn');
+                const uIn = document.getElementById('admin-username');
+                const pIn = document.getElementById('admin-password');
+                const err = document.getElementById('login-error');
 
-        sidebarItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const targetId = item.getAttribute('data-section');
-                
-                // Update active sidebar item
-                sidebarItems.forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
+                if (btn) {
+                    btn.onclick = () => {
+                        const u = uIn.value.trim();
+                        const p = pIn.value.trim();
+                        // Obscured verification
+                        if (btoa(u) === 'MTIzdXA=' && btoa(p) === 'MTIzdXA=') {
+                            sessionStorage.setItem('crimson_admin_auth', 'true');
+                            btn.innerText = "Access Granted! 🔓";
+                            btn.style.background = "#10b981";
+                            setTimeout(() => window.location.reload(), 300);
+                        } else {
+                            if (err) {
+                                err.style.display = 'block';
+                                err.textContent = "Incorrect Credentials. Please try again.";
+                            } else {
+                                alert("Incorrect Credentials. Please try again.");
+                            }
+                        }
+                    };
+                }
+            };
+            if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initLogin); }
+            else { initLogin(); }
+        })();
 
-                // Update visible section
-                adminSections.forEach(section => {
-                    section.classList.remove('active');
-                    if (section.id === targetId) {
-                        section.classList.add('active');
+        // Navigation and Cache Helpers
+        window.addEventListener("load", () => {
+            const statusEl = document.getElementById('cache-status');
+            if (statusEl) {
+                const keys = ['crimson_db_cache_v2', 'crimson_articles', 'crimson_theme', 'asif_visits'];
+                let bytes = 0;
+                keys.forEach(k => { const v = localStorage.getItem(k); if(v) bytes += v.length * 2; });
+                statusEl.textContent = bytes > 0 ? `${(bytes/1024).toFixed(1)} KB cached.` : 'No cache.';
+            }
+
+            const sidebarItems = document.querySelectorAll('.sidebar-item');
+            sidebarItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const target = item.getAttribute('data-section');
+                    if (target && typeof window.switchToSection === 'function') {
+                        window.switchToSection(target);
                     }
                 });
-
-                // On mobile, you might want to auto-scroll or close menu
-                if (window.innerWidth <= 992) {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
             });
         });
-        // Global helper: switch to any section by ID (used by script.js after publish)
-        window.switchToSection = function(targetId) {
-            sidebarItems.forEach(i => i.classList.remove('active'));
-            adminSections.forEach(section => {
-                section.classList.remove('active');
-                if (section.id === targetId) section.classList.add('active');
-            });
-            // Highlight matching sidebar item
-            sidebarItems.forEach(item => {
-                if (item.getAttribute('data-section') === targetId) item.classList.add('active');
-            });
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        };
 
-        // Cache status display
-        function updateCacheStatus() {
-            const statusEl = document.getElementById('cache-status');
-            if (!statusEl) return;
-            const cacheKeys = ['crimson_db_cache_v2', 'crimson_articles', 'crimson_theme', 'asif_visits'];
-            let totalBytes = 0;
-            let found = [];
-            cacheKeys.forEach(key => {
-                const val = localStorage.getItem(key);
-                if (val) {
-                    totalBytes += val.length * 2; // UTF-16
-                    found.push(key.replace('crimson_', '').replace('asif_', ''));
-                }
-            });
-            if (found.length === 0) {
-                statusEl.textContent = 'No cache found — all data loads fresh from the server.';
-            } else {
-                const kb = (totalBytes / 1024).toFixed(1);
-                statusEl.textContent = `${kb} KB cached (${found.join(', ')})`;
-            }
-        }
-        updateCacheStatus();
-
-        // Clear all site cache keys from localStorage
         window.clearSiteCache = function() {
-            const btn = document.getElementById('clear-cache-btn');
-            const cacheKeys = ['crimson_db_cache_v2', 'crimson_articles', 'asif_visits', 'asif_preloader_seen'];
-            cacheKeys.forEach(key => localStorage.removeItem(key));
-            sessionStorage.removeItem('asif_visited');
-
-            btn.innerHTML = '✅ Cleared!';
-            btn.style.background = '#10b981';
-            btn.style.color = '#fff';
-            btn.style.borderColor = '#10b981';
-
-            setTimeout(() => {
-                window.location.reload();
-            }, 800);
+            const keys = ['crimson_db_cache_v2', 'crimson_articles', 'asif_visits', 'asif_preloader_seen'];
+            keys.forEach(k => localStorage.removeItem(k));
+            alert('Cache cleared! Restarting...');
+            window.location.reload();
         };
     </script>
 </body>
