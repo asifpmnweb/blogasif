@@ -17,14 +17,13 @@ export default async function handler(req, res) {
 
         const articles = await response.json();
 
-        // Helper to generate slug (matches script.js exactly)
+        // Helper to generate slug (matches user's latest article.html logic)
         const generateSlug = (title) => {
             if (!title) return '';
-            const words = title.toLowerCase().trim().split(/\s+/).slice(0, 5).join(' ');
-            return words
+            return title.toLowerCase()
                 .replace(/[^\w\s-]/g, '')
-                .replace(/[\s_-]+/g, '-')
-                .replace(/^-+|-+$/g, '');
+                .replace(/\s+/g, '-')
+                .trim();
         };
 
         const baseUrl = 'https://blog.asifpmn.in';
@@ -69,7 +68,7 @@ export default async function handler(req, res) {
         xml += `\n</urlset>`;
 
         // Set Headers
-        res.setHeader('Content-Type', 'application/xml');
+        res.setHeader('Content-Type', 'text/xml');
         // Cache for 1 hour to balance fresh content and server performance
         res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
         
