@@ -69,8 +69,8 @@ export default async function handler(req, res) {
 
         // Set Headers
         res.setHeader('Content-Type', 'text/xml');
-        // Cache for 1 hour to balance fresh content and server performance
-        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
+        // Very low cache (1 min) to ensure nearly instant updates when new posts are published
+        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
         
         res.status(200).send(xml);
     } catch (error) {
