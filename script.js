@@ -871,7 +871,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isArticlePage) {
             const urlParams = new URLSearchParams(window.location.search);
             const slug = urlParams.get('slug') || urlParams.get('id');
-            const pathSlug = window.location.pathname.includes('/article/') ? decodeURIComponent(window.location.pathname.split('/article/')[1].replace(/\/$/, '')) : null;
+            const pathParts = window.location.pathname.split('/');
+            const pathSlug = window.location.pathname.includes('/article/') ? decodeURIComponent(pathParts[pathParts.indexOf('article') + 1].replace(/\/$/, '')) : null;
             const targetId = slug || pathSlug;
 
             if (targetId) {
@@ -886,6 +887,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         return;
                     }
                     window.renderSingleArticle(found);
+                } else if (window.globalArticles.length > 0) {
+                    // Data loaded but article not found
+                    const titleEl = document.getElementById('article-title');
+                    if (titleEl) titleEl.innerHTML = "Post Not Found <span style='font-size: 1rem; display:block; margin-top:1rem; opacity:0.6;'>The article you're looking for might have been moved or archived.</span>";
+                    const bodyEl = document.getElementById('article-content');
+                    if (bodyEl) bodyEl.innerHTML = "<div style='text-align:center; padding: 3rem 0;'><a href='/' class='btn btn-primary'>Return to Home</a></div>";
+                    const sk = document.getElementById('image-skeleton');
+                    if (sk) sk.style.display = 'none';
+                    if (window.finalizePreloader) window.finalizePreloader();
                 }
             } else {
                 // Default to latest article if no slug provided on article page
@@ -1427,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         // Robust Slug Extraction
         const pathParts = window.location.pathname.split('/');
-        const pathSlug = pathParts[pathParts.indexOf('article') + 1] || null;
+        const pathSlug = window.location.pathname.includes('/article/') ? decodeURIComponent(pathParts[pathParts.indexOf('article') + 1].replace(/\/$/, '')) : null;
         let articleId = urlParams.get('slug') || urlParams.get('id') || pathSlug;
         if (articleId === "") articleId = null;
 
