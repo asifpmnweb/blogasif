@@ -1,13 +1,21 @@
 {
-  "cleanUrls": true,
+  "cleanUrls": false,
   "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/article/:slug*",
+      "source": "/article",
+      "destination": "/article.html"
+    },
+    {
+      "source": "/article/:path+",
       "destination": "/article.html"
     },
     {
       "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/:path+",
       "destination": "/admin.html"
     },
     {
