@@ -16,7 +16,8 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^/?article/([^/]+)/?$ /article.html [NC,L,QSA]
 
-# 2. General Clean URLs: /admin serves admin.html invisibly
+# 2. General Clean URLs: /admin serves admin.html invisibly (Skip if it's the /api/ folder)
+RewriteCond %{REQUEST_URI} !^/api/ [NC] 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^/?([^\.]+)$ /$1.html [NC,L,QSA]

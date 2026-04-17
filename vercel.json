@@ -1,21 +1,33 @@
 {
-    "outputDirectory": ".",
-    "rewrites": [
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/article/:slug",
+      "destination": "/article.html?slug=:slug"
+    },
+    {
+      "source": "/article",
+      "destination": "/article.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap.xml"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
         {
-            "source": "/article",
-            "destination": "/article.html"
-        },
-        {
-            "source": "/admin",
-            "destination": "/admin.html"
-        },
-        {
-            "source": "/upload",
-            "destination": "/admin.html"
-        },
-        {
-            "source": "/sitemap.xml",
-            "destination": "/api/sitemap.xml"
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
-    ]
+      ]
+    }
+  ]
 }
