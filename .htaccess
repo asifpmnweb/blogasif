@@ -17,13 +17,13 @@ RewriteBase /
 RewriteRule ^/?article/(styles\.css|script\.js|logo\.png|media/.*)$ /$1 [NC,L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^/?article/([^/]+)/?$ /article.html [NC,L,QSA]
+RewriteRule ^/?article/([^/.\ ]+)/?$ article.html [NC,L,QSA]
 
-# 2. General Clean URLs: /admin serves admin.html invisibly (Skip if it's the /api/ folder)
+# 2. General Clean URLs: /admin serves admin.html invisibly
 RewriteCond %{REQUEST_URI} !^/api/ [NC] 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^/?([^\.]+)$ /$1.html [NC,L,QSA]
+RewriteRule ^/?([^\.]+)$ $1.html [NC,L,QSA]
 
 # 3. Force clean URL redirect: /article.html → /article
 RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /([^.]+)\.html\ HTTP
