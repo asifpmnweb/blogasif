@@ -1,6 +1,23 @@
 {
-  "cleanUrls": false,
+  "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/upload(.html)?",
+      "destination": "/admin",
+      "permanent": true
+    },
+    {
+      "source": "/update_unlist.js",
+      "destination": "/404",
+      "permanent": true
+    },
+    {
+      "source": "/refactor.js",
+      "destination": "/404",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/article",
