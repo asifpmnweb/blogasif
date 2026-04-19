@@ -1,5 +1,5 @@
 {
-  "cleanUrls": true,
+  "cleanUrls": false,
   "trailingSlash": false,
   "redirects": [
     {
@@ -20,16 +20,20 @@
   ],
   "rewrites": [
     {
-      "source": "/article/:path*",
+      "source": "/article/(.*)",
       "destination": "/article.html"
     },
     {
-      "source": "/admin/:path*",
+      "source": "/admin/(.*)",
       "destination": "/admin.html"
     },
     {
       "source": "/admin",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/article",
+      "destination": "/article.html"
     },
     {
       "source": "/sitemap.xml",

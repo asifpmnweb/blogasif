@@ -882,6 +882,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const targetId = slug || pathSlug;
 
             if (targetId) {
+                // --- BULLETPROOF ROUTING FALLBACK ---
+                // If we are on a path like /article/slug but the server served 404.html (missing article-content),
+                // we force a redirect to the reliable query-parameter version to bypass rewrite failures.
+                if (!document.getElementById('article-content') && !window.location.pathname.includes('article.html') && !isLocalEnv) {
+                    console.warn("Server rewrite failed. Falling back to explicit navigation.");
+                    window.location.href = `/article.html?slug=${targetId}`;
+                    return;
+                }
+
                 const found = (window.globalArticles || []).find(a => 
                     a.id === targetId || generateSlug(a.title) === targetId
                 );
