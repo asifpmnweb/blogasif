@@ -20,15 +20,15 @@
   ],
   "rewrites": [
     {
-      "source": "/article/:slug",
+      "source": "/article/:path*",
       "destination": "/article.html"
     },
     {
-      "source": "/admin",
+      "source": "/admin/:path*",
       "destination": "/admin.html"
     },
     {
-      "source": "/admin/:path*",
+      "source": "/admin",
       "destination": "/admin.html"
     },
     {
