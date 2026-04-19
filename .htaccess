@@ -5,8 +5,11 @@
 Options -MultiViews
 RewriteEngine On
 
-# 1. Redirect /upload to /admin
-RewriteRule ^/?upload/?$ /admin [R=302,NC,L]
+# 1. Hide /upload and /upload.html from public - Redirect to /admin
+RewriteRule ^/?upload(\.html)?/?$ /admin [R=301,NC,L]
+
+# 1.1 Hide sensitive Dev scripts from public
+RewriteRule ^/?(update_unlist|refactor)\.js$ - [F,L]
 
 # 2. SEO Friendly Article URLs (.htaccess routing)
 RewriteEngine On

@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /upload
+Disallow: /upload.html
+Disallow: /styles.css
+Disallow: /script.js
+Disallow: /update_unlist.js
+Disallow: /refactor.js
 Sitemap: https://blog.asifpmn.in/sitemap.xml
