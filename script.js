@@ -56,8 +56,8 @@ const isLocalEnv = window.location.protocol === 'file:' ||
     window.location.hostname.endsWith('.local');
 const pageExt = isLocalEnv ? '.html' : '';
 
-const isArticlePage = window.location.pathname.includes('/article') || !!document.getElementById('article-title');
-const isDashboard = window.location.pathname.includes('/admin') || !!document.getElementById('admin-sidebar') || !!document.getElementById('admin-login-screen');
+const isArticlePage = window.location.pathname.startsWith('/article') || !!document.getElementById('article-title');
+const isDashboard = window.location.pathname.startsWith('/admin') || !!document.getElementById('admin-sidebar') || !!document.getElementById('admin-login-screen');
 const isHome = window.location.pathname === '/' || window.location.pathname === '/index.html' || (!isArticlePage && !isDashboard);
 
 // Helper to sanitize links for the current environment
@@ -871,8 +871,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isArticlePage) {
             const urlParams = new URLSearchParams(window.location.search);
             const slug = urlParams.get('slug') || urlParams.get('id');
-            const pathParts = window.location.pathname.split('/');
-            const pathSlug = window.location.pathname.includes('/article/') ? decodeURIComponent(pathParts[pathParts.indexOf('article') + 1].replace(/\/$/, '')) : null;
+            
+            // Refined Slug Extraction from Path
+            const pathParts = window.location.pathname.split('/').filter(p => p !== "");
+            let pathSlug = null;
+            if (pathParts[0] === 'article' && pathParts.length > 1) {
+                pathSlug = decodeURIComponent(pathParts[1]);
+            }
+            
             const targetId = slug || pathSlug;
 
             if (targetId) {
@@ -1435,10 +1441,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (isArticlePage) {
         const urlParams = new URLSearchParams(window.location.search);
-        // Robust Slug Extraction
-        const pathParts = window.location.pathname.split('/');
-        const pathSlug = window.location.pathname.includes('/article/') ? decodeURIComponent(pathParts[pathParts.indexOf('article') + 1].replace(/\/$/, '')) : null;
-        let articleId = urlParams.get('slug') || urlParams.get('id') || pathSlug;
+        
+        // Robust Slug Extraction (Matches renderAllSections)
+        const pathParts = window.location.pathname.split('/').filter(p => p !== "");
+        let articleId = urlParams.get('slug') || urlParams.get('id');
+        
+        if (!articleId && pathParts[0] === 'article' && pathParts.length > 1) {
+            articleId = decodeURIComponent(pathParts[1]);
+        }
+        
         if (articleId === "") articleId = null;
 
         const tryInitialRender = () => {

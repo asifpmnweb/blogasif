@@ -20,11 +20,7 @@
   ],
   "rewrites": [
     {
-      "source": "/article",
-      "destination": "/article.html"
-    },
-    {
-      "source": "/article/:path+",
+      "source": "/article/:slug",
       "destination": "/article.html"
     },
     {
@@ -32,7 +28,7 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/admin/:path+",
+      "source": "/admin/:path*",
       "destination": "/admin.html"
     },
     {
