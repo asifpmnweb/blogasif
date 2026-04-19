@@ -17,9 +17,13 @@ RewriteBase /
 RewriteRule ^/?article/(styles\.css|script\.js|logo\.png|media/.*)$ /$1 [NC,L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^/?article/([^/]+)/?$ article.html [NC,L,QSA]
+RewriteRule ^/?article/(.*)$ article.html [NC,L,QSA]
+RewriteRule ^/?article/?$ article.html [NC,L,QSA]
 
 # 2. General Clean URLs: /admin serves admin.html invisibly
+RewriteRule ^/?admin/(.*)$ admin.html [NC,L,QSA]
+RewriteRule ^/?admin/?$ admin.html [NC,L,QSA]
+
 RewriteCond %{REQUEST_URI} !^/api/ [NC] 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
